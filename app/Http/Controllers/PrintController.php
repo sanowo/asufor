@@ -1,0 +1,367 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Barryvdh\DomPDF\Facade\Pdf;
+
+class PrintController extends Controller
+{
+    /**
+     * Print single or multiple factures
+     */
+    public function printFactures(Request $request)
+    {
+        $useFilters = $request->input('use_filters', false);
+
+        if ($useFilters) {
+            $filters = $request->input('filters', []);
+            $factureNumbers = app(\App\Http\Controllers\FactureController::class)->getFacturesFromFilters($filters);
+        } else {
+            $validated = $request->validate([
+                'facture_numbers' => 'required|array',
+                'facture_numbers.*' => 'required|string'
+            ]);
+            $factureNumbers = $validated['facture_numbers'];
+        }
+
+        $factures = [];
+        foreach ($factureNumbers as $numero) {
+            $facture = $this->getFactureData($numero);
+            if ($facture) {
+                $factures[] = $facture;
+            }
+        }
+
+        if (empty($factures)) {
+            return response()->json(['error' => 'Aucune facture trouvée'], 404);
+        }
+
+        $parametres = $this->getParametres();
+
+        $pdf = PDF::loadView('pdf.factures', [
+            'factures' => $factures,
+            'parametres' => $parametres
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('factures_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Print bon de coupure (disconnection notices)
+     */
+    public function printBonsCoupure(Request $request)
+    {
+        $useFilters = $request->input('use_filters', false);
+
+        if ($useFilters) {
+            $filters = $request->input('filters', []);
+            $factureNumbers = app(\App\Http\Controllers\FactureController::class)->getFacturesFromFilters($filters);
+
+            $factures = DB::table('facture_v2 as f')
+                ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
+                ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+                ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+                ->whereIn('f.NUMERO_FACTURE', $factureNumbers)
+                ->where('f.REGLE', 0)
+                ->select('f.*', 'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM')
+                ->get();
+        } else {
+            $validated = $request->validate([
+                'facture_numbers' => 'required|array',
+                'facture_numbers.*' => 'required|string'
+            ]);
+
+            $factures = DB::table('facture_v2 as f')
+                ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
+                ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+                ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+                ->whereIn('f.NUMERO_FACTURE', $validated['facture_numbers'])
+                ->where('f.REGLE', 0)
+                ->select('f.*', 'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM')
+                ->get();
+        }
+
+        if ($factures->isEmpty()) {
+            return response()->json(['error' => 'Aucun bon de coupure trouvé'], 404);
+        }
+
+        $parametres = $this->getParametres();
+
+        $pdf = PDF::loadView('pdf.bons-coupure', [
+            'factures' => $factures,
+            'parametres' => $parametres
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('bons_coupure_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Print fiche de relevé (meter reading forms)
+     */
+    public function printFicheReleve(Request $request)
+    {
+        $validated = $request->validate([
+            'quartier' => 'required'
+        ]);
+
+        $query = DB::table('client as c')
+            ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->leftJoin('compteur as cpt', 'c.NUM_CLIENT', '=', 'cpt.NUM_CLIENT')
+            ->where('c.STATUT', 0)
+            ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
+                     'cpt.NUM_COMPTEUR', 'cpt.INDEX_COMPTEUR',
+                     DB::raw('CONCAT(c.NOM, " ", c.PRENOM) as CLIENT'));
+
+        if ($validated['quartier'] !== '*') {
+            $query->where('c.ID_QUARTIER', $validated['quartier']);
+        }
+
+        $clients = $query->orderBy('q.NOM')->orderBy('c.NOM')->get();
+
+        if ($clients->isEmpty()) {
+            return response()->json(['error' => 'Aucun client trouvé'], 404);
+        }
+
+        $parametres = $this->getParametres();
+        $quartier = null;
+
+        if ($validated['quartier'] !== '*') {
+            $quartier = DB::table('quartier')->where('ID_QUARTIER', $validated['quartier'])->first();
+        }
+
+        $pdf = PDF::loadView('pdf.fiche-releve', [
+            'clients' => $clients,
+            'parametres' => $parametres,
+            'quartier' => $quartier
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('fiche_releve_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Print caisse operations journal
+     */
+    public function printOperations(Request $request)
+    {
+        $validated = $request->validate([
+            'date_start' => 'required|date',
+            'date_end' => 'required|date',
+            'status' => 'nullable|string',
+            'type_operation' => 'nullable|integer'
+        ]);
+
+        $query = DB::table('operation as o')
+            ->leftJoin('typeoperation as t', 'o.ID_TYPEOPERATION', '=', 't.ID_TYPEOPERATION')
+            ->whereBetween('o.DATE_OPERATION', [$validated['date_start'], $validated['date_end']])
+            ->select('o.*', 't.LIBELLE as TYPE_LABEL', 't.IS_REVENUE');
+
+        if (isset($validated['status']) && $validated['status'] !== '*') {
+            if ($validated['status'] === 'pending') {
+                $query->where('o.VALIDE', 0);
+            } else if ($validated['status'] === 'confirmed') {
+                $query->where('o.VALIDE', 1);
+            }
+        }
+
+        if (isset($validated['type_operation']) && $validated['type_operation'] !== '*') {
+            $query->where('o.ID_TYPEOPERATION', $validated['type_operation']);
+        }
+
+        $operations = $query->orderBy('o.DATE_OPERATION', 'desc')->get();
+
+        if ($operations->isEmpty()) {
+            return response()->json(['error' => 'Aucune opération trouvée'], 404);
+        }
+
+        // Calculate totals
+        $total_credit = $operations->where('IS_REVENUE', 1)->sum('MONTANT');
+        $total_debit = $operations->where('IS_REVENUE', 0)->sum('MONTANT');
+        $solde = $total_credit - $total_debit;
+
+        $parametres = $this->getParametres();
+
+        $pdf = PDF::loadView('pdf.operations-caisse', [
+            'operations' => $operations,
+            'parametres' => $parametres,
+            'date_start' => $validated['date_start'],
+            'date_end' => $validated['date_end'],
+            'total_credit' => $total_credit,
+            'total_debit' => $total_debit,
+            'solde' => $solde
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('operations_' . $validated['date_start'] . '_' . $validated['date_end'] . '.pdf');
+    }
+
+    /**
+     * Print liste des clients suspendus
+     */
+    public function printClientsSuspendus(Request $request)
+    {
+        $validated = $request->validate([
+            'quartier' => 'nullable|integer'
+        ]);
+
+        $query = DB::table('client as c')
+            ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->where('c.STATUT', 1)
+            ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
+                DB::raw('(SELECT COUNT(*) FROM compteur WHERE NUM_CLIENT = c.NUM_CLIENT) as NB_COMPTEURS'),
+                DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUM_CLIENT = c.NUM_CLIENT) as TOTAL_IMPAYE'));
+
+        if (isset($validated['quartier'])) {
+            $query->where('c.ID_QUARTIER', $validated['quartier']);
+        }
+
+        $clients = $query->orderBy('q.NOM')->orderBy('c.NOM')->get();
+
+        if ($clients->isEmpty()) {
+            return response()->json(['error' => 'Aucun client suspendu trouvé'], 404);
+        }
+
+        $total_impaye = $clients->sum('TOTAL_IMPAYE');
+        $total_compteurs = $clients->sum('NB_COMPTEURS');
+
+        $parametres = $this->getParametres();
+
+        $pdf = PDF::loadView('pdf.clients-suspendus', [
+            'clients' => $clients,
+            'parametres' => $parametres,
+            'total_impaye' => $total_impaye,
+            'total_compteurs' => $total_compteurs
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream('clients_suspendus_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Print liste des factures (table format)
+     */
+    public function printFacturesList(Request $request)
+    {
+        $useFilters = $request->input('use_filters', false);
+
+        if ($useFilters) {
+            $filters = $request->input('filters', []);
+            $factureNumbers = app(\App\Http\Controllers\FactureController::class)->getFacturesFromFilters($filters);
+        } else {
+            $validated = $request->validate([
+                'facture_numbers' => 'required|array',
+                'facture_numbers.*' => 'required|string'
+            ]);
+            $factureNumbers = $validated['facture_numbers'];
+        }
+
+        $factures = DB::table('facture_v2 as f')
+            ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
+            ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+            ->whereIn('f.NUMERO_FACTURE', $factureNumbers)
+            ->select('f.*',
+                DB::raw("CONCAT(c.NOM, ' ', c.PRENOM) as CLIENT"),
+                'q.NOM as QUARTIER',
+                DB::raw('(SELECT SUM(TOTAL) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
+                        (SELECT COALESCE(SUM(MONTANT_TRANCHE), 0) FROM facture_pret WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) as MONTANT_TOTAL'),
+                DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
+                        (SELECT COALESCE(SUM(IMPAYE), 0) FROM facture_pret WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) as RESTANT'))
+            ->orderBy('f.DATEFACTURE', 'desc')
+            ->get();
+
+        if ($factures->isEmpty()) {
+            return response()->json(['error' => 'Aucune facture trouvée'], 404);
+        }
+
+        $total = $factures->sum('MONTANT_TOTAL');
+        $restant = $factures->sum('RESTANT');
+        $encaisse = $total - $restant;
+
+        $parametres = $this->getParametres();
+
+        $pdf = PDF::loadView('pdf.factures-list', [
+            'factures' => $factures,
+            'parametres' => $parametres,
+            'total' => $total,
+            'encaisse' => $encaisse,
+            'restant' => $restant
+        ]);
+
+        $pdf->setPaper('a4', 'landscape');
+
+        return $pdf->stream('liste_factures_' . date('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Get full facture data with related information
+     */
+    private function getFactureData($numero_facture)
+    {
+        $facture = DB::table('facture_v2 as f')
+            ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
+            ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
+            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->leftJoin('releve as r', 'f.ID_RELEVE', '=', 'r.ID_RELEVE')
+            ->leftJoin('compteur as cpt', 'r.NUM_COMPTEUR', '=', 'cpt.NUM_COMPTEUR')
+            ->where('f.NUMERO_FACTURE', $numero_facture)
+            ->select('f.*',
+                     'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'c.NUM_CLIENT',
+                     'q.NOM as QUARTIER',
+                     'u.NOM as USAGE_NOM', 'u.TARIF',
+                     'r.CONSOMMATION', 'r.ANCIEN_INDEX', 'r.INDEX as NOUVEL_INDEX',
+                     'cpt.NUM_COMPTEUR')
+            ->first();
+
+        if (!$facture) {
+            return null;
+        }
+
+        // Get active loans for this client
+        $prets = DB::table('pret')
+            ->where('NUM_CLIENT', $facture->NUM_CLIENT)
+            ->where('ACTIF', 1)
+            ->where('IMPAYER', '>', 0)
+            ->get();
+
+        // Get reduction applied to this facture (if any)
+        $reduction = DB::table('facture_reduction as fr')
+            ->leftJoin('reduction as r', 'fr.ID_REDUCTION', '=', 'r.ID_REDUCTION')
+            ->where('fr.NUM_FACTURE', $numero_facture)
+            ->select('fr.*', 'r.LIBELLE as REDUCTION_LIBELLE', 'r.DESCRIPTION as REDUCTION_DESCRIPTION')
+            ->first();
+
+        return [
+            'facture' => $facture,
+            'prets' => $prets,
+            'reduction' => $reduction
+        ];
+    }
+
+    /**
+     * Get system parameters (company info)
+     */
+    private function getParametres()
+    {
+        $params = DB::table('parametres')
+            ->whereIn('TYPE', ['entreprise', 'adresse', 'telephone'])
+            ->pluck('VALUE', 'TYPE')
+            ->toArray();
+
+        return [
+            'entreprise' => $params['entreprise'] ?? 'ASUFOR',
+            'adresse' => $params['adresse'] ?? '',
+            'telephone' => $params['telephone'] ?? ''
+        ];
+    }
+}

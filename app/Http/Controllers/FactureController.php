@@ -408,22 +408,21 @@ public function list(Request $request)
 
         // ⚠️ Note : on ré-encapsule $mainQuery dans metaQuery, donc on double les params
         // Card État : explique pourquoi Montant Total ≠ Total Reçu
-        // TOTAL = TOTAL_RECU + Gracié + Recouvert + Impayé_restant
-        // - Gracié    = TOTAL - TOTAL_RECU sur factures graciées (montant effacé)
-        // - Recouvert = TOTAL - TOTAL_RECU sur factures en recouvrement (confié à un tiers)
-        // - Impayé    = TOTAL - TOTAL_RECU sur toutes les autres factures non réglées
+        // TOTAL = TOTAL_RECU + Gracié + Recouvert + Impayé + Réductions appliquées
         $metaResult = DB::selectOne(
             "SELECT
                 COUNT(*) AS cnt,
-                SUM(TOTAL) AS total,
-                SUM(TOTAL_RECU) AS total_recu,
-                SUM(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_gracie,
-                COUNT(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
-                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_recouvrement,
-                COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
-                SUM(CASE WHEN REGLE = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_impaye,
-                COUNT(CASE WHEN REGLE = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye
-             FROM ($mainQuery) AS agg",
+                SUM(agg.TOTAL) AS total,
+                SUM(agg.TOTAL_RECU) AS total_recu,
+                COALESCE(SUM(fr.MONTANT_REDUCTION), 0) AS total_reduction,
+                SUM(CASE WHEN agg.REGLEMENT_TYPE = 'GRACIER' THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_gracie,
+                COUNT(CASE WHEN agg.REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
+                SUM(CASE WHEN agg.REGLEMENT_TYPE = 'RECOUVREMENT' THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_recouvrement,
+                COUNT(CASE WHEN agg.REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
+                SUM(CASE WHEN agg.REGLE = 0 AND agg.REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_impaye,
+                COUNT(CASE WHEN agg.REGLE = 0 AND agg.REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye
+             FROM ($mainQuery) AS agg
+             LEFT JOIN facture_reduction fr ON fr.NUM_FACTURE = agg.NUMERO_FACTURE",
             $mainParams
         );
 
@@ -431,6 +430,7 @@ public function list(Request $request)
             'count'              => (int)   ($metaResult->cnt               ?? 0),
             'total'              => (float) ($metaResult->total              ?? 0),
             'total_recu'         => (float) ($metaResult->total_recu         ?? 0),
+            'total_reduction'    => (float) ($metaResult->total_reduction    ?? 0),
             'total_gracie'       => (float) ($metaResult->total_gracie       ?? 0),
             'nb_gracie'          => (int)   ($metaResult->nb_gracie          ?? 0),
             'total_recouvrement' => (float) ($metaResult->total_recouvrement ?? 0),

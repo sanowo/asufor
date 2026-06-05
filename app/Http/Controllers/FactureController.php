@@ -407,6 +407,11 @@ public function list(Request $request)
         ";
 
         // ⚠️ Note : on ré-encapsule $mainQuery dans metaQuery, donc on double les params
+        // Card État : explique pourquoi Montant Total ≠ Total Reçu
+        // TOTAL = TOTAL_RECU + Gracié + Recouvert + Impayé_restant
+        // - Gracié    = TOTAL - TOTAL_RECU sur factures graciées (montant effacé)
+        // - Recouvert = TOTAL - TOTAL_RECU sur factures en recouvrement (confié à un tiers)
+        // - Impayé    = TOTAL - TOTAL_RECU sur toutes les autres factures non réglées
         $metaResult = DB::selectOne(
             "SELECT
                 COUNT(*) AS cnt,
@@ -416,10 +421,8 @@ public function list(Request $request)
                 COUNT(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
                 SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_recouvrement,
                 COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
-                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_impaye,
-                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye,
-                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_engage,
-                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_engage
+                SUM(CASE WHEN REGLE = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_impaye,
+                COUNT(CASE WHEN REGLE = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye
              FROM ($mainQuery) AS agg",
             $mainParams
         );
@@ -434,8 +437,6 @@ public function list(Request $request)
             'nb_recouvrement'    => (int)   ($metaResult->nb_recouvrement    ?? 0),
             'total_impaye'       => (float) ($metaResult->total_impaye       ?? 0),
             'nb_impaye'          => (int)   ($metaResult->nb_impaye          ?? 0),
-            'total_engage'       => (float) ($metaResult->total_engage       ?? 0),
-            'nb_engage'          => (int)   ($metaResult->nb_engage          ?? 0),
             'periode'            => [
                 'date_start' => $dateStart,
                 'date_end'   => $dateEnd,

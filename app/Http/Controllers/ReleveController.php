@@ -109,7 +109,7 @@ class ReleveController extends Controller
 
         // Wrap the filtered query as a subquery and aggregate on top to avoid GROUP BY conflicts
         $agg = DB::table(DB::raw('(' . $query->toSql() . ') as sub'))
-            ->mergeBindings($query->getQuery())
+            ->mergeBindings($query)
             ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(sub.TOTAL), 0) as total_montant, COALESCE(SUM(sub.CONSOMMATION), 0) as total_conso')
             ->first();
 

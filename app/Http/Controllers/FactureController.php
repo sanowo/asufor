@@ -321,6 +321,8 @@ public function list(Request $request)
                 IFNULL(op.ATTENTE, 0)   AS ATTENTE
             FROM (
                 -- Agrégation de l'UNION facture_v2 + facture_pret
+                -- REGLEMENT_TYPE pris uniquement depuis facture_v2 via MAX() pour éviter
+                -- que la valeur vide de facture_pret crée une ligne GROUP BY séparée
                 SELECT
                     NUMERO_FACTURE,
                     NUM_CLIENT,
@@ -333,7 +335,7 @@ public function list(Request $request)
                     IF(SUM(REGLE), 1, 0)                AS IS_REGLE,
                     IF(SUM(REGLE) = COUNT(*), 1, 0)     AS REGLE,
                     IF(SUM(BONCOUPURE), 1, 0)           AS BONCOUPURE,
-                    REGLEMENT_TYPE
+                    MAX(REGLEMENT_TYPE)                 AS REGLEMENT_TYPE
                 FROM (
                     -- Branche 1 : factures principales
                     SELECT
@@ -348,7 +350,7 @@ public function list(Request $request)
 
                     UNION ALL
 
-                    -- Branche 2 : prêts liés aux factures filtrées
+                    -- Branche 2 : prêts liés aux factures filtrées (REGLEMENT_TYPE vide '')
                     SELECT
                         fp.NUMERO_FACTURE, fp.NUM_CLIENT, fp.DATEFACTURE, fp.DATEECH,
                         fp.TOTAL, fp.REGLE, fp.RECU, fp.REGLEMENT_TYPE, 0 AS BONCOUPURE,
@@ -360,7 +362,7 @@ public function list(Request $request)
                     WHERE fp.NUMERO_FACTURE IN ($idsSubQuery)
 
                 ) AS facture_full
-                GROUP BY NUMERO_FACTURE, NUM_CLIENT, CLIENT, DATEFACTURE, DATEECH, QUARTIER, REGLEMENT_TYPE
+                GROUP BY NUMERO_FACTURE, NUM_CLIENT, CLIENT, DATEFACTURE, DATEECH, QUARTIER
 
             ) AS r
 

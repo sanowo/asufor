@@ -407,19 +407,22 @@ public function list(Request $request)
         ";
 
         // ⚠️ Note : on ré-encapsule $mainQuery dans metaQuery, donc on double les params
+        // IMPAYE est toujours à jour (mis à 0 par grace/recouvrement, décrémenté par paiement)
+        // RECU peut ne pas refléter les graces (RECU non mis à jour lors d'un grace)
+        // On utilise donc (TOTAL - IMPAYE) comme montant effectivement couvert, qui est toujours cohérent
         $metaResult = DB::selectOne(
             "SELECT
                 COUNT(*) AS cnt,
                 SUM(TOTAL) AS total,
-                SUM(TOTAL_RECU) AS total_recu,
-                SUM(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_gracie,
+                SUM(TOTAL - IMPAYE) AS total_recu,
+                SUM(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN TOTAL ELSE 0 END) AS total_gracie,
                 COUNT(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
-                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_recouvrement,
+                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN IMPAYE ELSE 0 END) AS total_recouvrement,
                 COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
-                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_impaye,
-                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye,
-                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_engage,
-                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_engage
+                SUM(CASE WHEN REGLE = 0 AND IMPAYE = TOTAL AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN IMPAYE ELSE 0 END) AS total_impaye,
+                COUNT(CASE WHEN REGLE = 0 AND IMPAYE = TOTAL AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye,
+                SUM(CASE WHEN REGLE = 0 AND IMPAYE < TOTAL AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN IMPAYE ELSE 0 END) AS total_engage,
+                COUNT(CASE WHEN REGLE = 0 AND IMPAYE < TOTAL AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_engage
              FROM ($mainQuery) AS agg",
             $mainParams
         );

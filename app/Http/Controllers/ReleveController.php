@@ -107,10 +107,11 @@ class ReleveController extends Controller
         $start  = max(0, (int) ($request->start ?? 0));
         $length = min(200, max(1, (int) ($request->length ?? 50)));
 
-        // Aggregate on full filtered result set before pagination
-        $aggQuery = clone $query;
-        $agg = $aggQuery->selectRaw('COUNT(*) as cnt, COALESCE(SUM(f.TOTAL), 0) as total_montant, COALESCE(SUM(r.RELEVE - r.ANCIEN_INDEX), 0) as total_conso')
-                        ->first();
+        // Wrap the filtered query as a subquery and aggregate on top to avoid GROUP BY conflicts
+        $agg = DB::table(DB::raw('(' . $query->toSql() . ') as sub'))
+            ->mergeBindings($query->getQuery())
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(sub.TOTAL), 0) as total_montant, COALESCE(SUM(sub.CONSOMMATION), 0) as total_conso')
+            ->first();
 
         $total = (int) ($agg->cnt ?? 0);
         $data  = $query->skip($start)->take($length)->get();

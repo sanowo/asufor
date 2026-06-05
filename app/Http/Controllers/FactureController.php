@@ -709,8 +709,8 @@ public function list(Request $request)
             GROUP BY NUMERO_FACTURE
         ";
 
-        // whereParams x2 (branche 1) + whereParams x1 (idsSubQuery branche 2)
-        $allData = DB::select($unionSQL, array_merge($whereParams, $whereParams, $whereParams));
+        // whereParams x1 (branche 1) + whereParams x1 (idsSubQuery dans branche 2)
+        $allData = DB::select($unionSQL, array_merge($whereParams, $whereParams));
 
         // Filtre status en PHP (même logique que list())
         if (!empty($filters['status']) && $filters['status'] !== '*') {

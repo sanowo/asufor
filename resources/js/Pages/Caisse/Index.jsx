@@ -66,10 +66,6 @@ export default function CaisseIndex({ typeOperations }) {
     // ── Helpers ──────────────────────────────────────────────────────────────
     const formatMoney = (amount) => new Intl.NumberFormat('fr-FR').format(amount || 0);
 
-    const displayDateStart = filters.date_start || meta.periode?.date_start;
-    const displayDateEnd   = filters.date_end   || meta.periode?.date_end;
-    const isDefaultPeriode = !filters.date_start && !filters.date_end;
-
     // ── Rechercher facture ───────────────────────────────────────────────────
     const searchFacture = async () => {
         if (!paymentForm.numero_facture) {
@@ -234,13 +230,7 @@ export default function CaisseIndex({ typeOperations }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    {/* <div className="flex gap-2"> */}
-                        <input type="date" className="border rounded px-3 py-2 flex-1" value={filters.date_start}
-                            onChange={(e) => setFilters({ ...filters, date_start: e.target.value })} />
-                        <input type="date" className="border rounded px-3 py-2 flex-1" value={filters.date_end}
-                            onChange={(e) => setFilters({ ...filters, date_end: e.target.value })} />
-                    {/* </div> */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <select className="border rounded px-3 py-2" value={filters.status}
                         onChange={(e) => setFilters({ ...filters, status: e.target.value })}>
                         <option value="*">Tous les statuts</option>

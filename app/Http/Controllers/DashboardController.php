@@ -11,8 +11,8 @@ class DashboardController extends Controller
     public function index()
     {
         $totalClients       = DB::table('client')->count();
-        $clientsActifs      = DB::table('client')->where('STATUT', 0)->count();
-        $clientsSuspendus   = DB::table('client')->where('STATUT', 1)->count();
+        $clientsActifs      = DB::table('client')->where('STATUT', 1)->count();
+        $clientsSuspendus   = DB::table('client')->where('STATUT', 0)->count();
         $totalCompteurs     = DB::table('compteur')->count();
         $compteursFonctionnels = DB::table('compteur')->where('ACTIF', 1)->count();
         $pretsActifs        = DB::table('pret')->where('ACTIF', 1)->count();

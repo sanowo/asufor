@@ -270,8 +270,8 @@ class PaiementService
             ->where('NUM_CLIENT', $num_client)
             ->first();
 
-        // STATUT: 0 = actif, 1 = suspendu
-        if ($client && $client->STATUT == 1) {
+        // STATUT: 1 = actif, 0 = suspendu
+        if ($client && $client->STATUT == 0) {
             // Compter les factures non réglées au lieu de sommer IMPAYE
             $factures_non_reglees = DB::table('facture_v2')
                 ->where('NUM_CLIENT', $num_client)
@@ -282,7 +282,7 @@ class PaiementService
             if ($factures_non_reglees == 0) {
                 DB::table('client')
                     ->where('NUM_CLIENT', $num_client)
-                    ->update(['STATUT' => 0]);
+                    ->update(['STATUT' => 1]);
             }
         }
     }

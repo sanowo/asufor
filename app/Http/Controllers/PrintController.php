@@ -130,7 +130,7 @@ class PrintController extends Controller
             ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
             ->leftJoin('compteur as cpt', 'c.ID_CLIENT', '=', 'cpt.ID_CLIENT')
             ->leftJoinSub($lastReleve, 'lr', 'cpt.ID_COMPTEUR', '=', 'lr.ID_COMPTEUR')
-            ->where('c.STATUT', 0)
+            ->where('c.STATUT', 1)
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
                      'cpt.ID_COMPTEUR', 'cpt.NUM_COMPTEUR',
                      'lr.INDEX_COMPTEUR',
@@ -230,7 +230,7 @@ class PrintController extends Controller
         $query = DB::table('client as c')
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
             ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
-            ->where('c.STATUT', 1)
+            ->where('c.STATUT', 0)
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
                 DB::raw('(SELECT COUNT(*) FROM compteur WHERE ID_CLIENT = c.ID_CLIENT) as NB_COMPTEURS'),
                 DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUM_CLIENT = c.NUM_CLIENT) as TOTAL_IMPAYE'));

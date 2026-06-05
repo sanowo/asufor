@@ -46,7 +46,7 @@ export default function ClientsIndex({ quartiers, usages }) {
         id_quartier: '',
         used: '',
         abonnement: '',
-        statut: 0
+        statut: 1
     });
 
     const [editForm, setEditForm] = useState({
@@ -56,7 +56,7 @@ export default function ClientsIndex({ quartiers, usages }) {
         id_quartier: '',
         used: '',
         abonnement: '',
-        statut: 0
+        statut: 1
     });
 
     const [errors, setErrors] = useState({});
@@ -420,8 +420,8 @@ export default function ClientsIndex({ quartiers, usages }) {
                                 onChange={(e) => setFilters({ ...filters, statut: e.target.value })}
                             >
                                 <option value="*">Tous</option>
-                                <option value="0">Actifs</option>
-                                <option value="1">Suspendus</option>
+                                <option value="1">Actifs</option>
+                                <option value="0">Suspendus</option>
                             </select>
                         </div>
                     )}
@@ -637,8 +637,8 @@ export default function ClientsIndex({ quartiers, usages }) {
                                         onChange={(e) => setCreateForm({ ...createForm, statut: parseInt(e.target.value) })}
                                         required
                                     >
-                                        <option value={0}>Actif</option>
-                                        <option value={1}>Suspendu</option>
+                                        <option value={1}>Actif</option>
+                                        <option value={0}>Suspendu</option>
                                     </select>
                                 </div>
                             </div>
@@ -751,8 +751,8 @@ export default function ClientsIndex({ quartiers, usages }) {
                                         onChange={(e) => setEditForm({ ...editForm, statut: parseInt(e.target.value) })}
                                         required
                                     >
-                                        <option value={0}>Actif</option>
-                                        <option value={1}>Suspendu</option>
+                                        <option value={1}>Actif</option>
+                                        <option value={0}>Suspendu</option>
                                     </select>
                                 </div>
                             </div>
@@ -822,11 +822,11 @@ export default function ClientsIndex({ quartiers, usages }) {
                                     <div className="text-sm text-gray-500">Statut</div>
                                     <div>
                                         <span className={`px-2 py-1 rounded text-xs ${
-                                            selectedClient.client.STATUT === 0
+                                            selectedClient.client.STATUT === 1
                                                 ? 'bg-green-100 text-green-800'
                                                 : 'bg-red-100 text-red-800'
                                         }`}>
-                                            {selectedClient.client.STATUT === 0 ? 'Actif' : 'Suspendu'}
+                                            {selectedClient.client.STATUT === 1 ? 'Actif' : 'Suspendu'}
                                         </span>
                                     </div>
                                 </div>

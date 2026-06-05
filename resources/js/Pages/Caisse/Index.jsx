@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PeriodSelector from '../../Components/PeriodSelector';
 import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 import PrintButton from '../../Components/PrintButton';
@@ -158,25 +159,13 @@ export default function CaisseIndex({ typeOperations }) {
             {/* Cards statistiques */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-6 mb-6">
 
-                <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500 flex items-center gap-1 flex-wrap">
-                        Période
-                        {isDefaultPeriode && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">Mois en cours</span>
-                        )}
-                    </div>
-                    {loading ? <Spinner size="sm" className="mt-2" /> : (
-                        <>
-                            <div className="text-sm font-bold text-gray-700 mt-1">
-                                {displayDateStart ? new Date(displayDateStart).toLocaleDateString('fr-FR') : '—'}
-                            </div>
-                            <div className="text-xs text-gray-400">au</div>
-                            <div className="text-sm font-bold text-gray-700">
-                                {displayDateEnd ? new Date(displayDateEnd).toLocaleDateString('fr-FR') : '—'}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <PeriodSelector
+                    dateStart={filters.date_start}
+                    dateEnd={filters.date_end}
+                    onChange={(p) => setFilters(f => ({ ...f, ...p }))}
+                    loading={loading}
+                    periode={meta.periode}
+                />
 
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Opérations</div>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import PeriodSelector from '../../Components/PeriodSelector';
 import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 import PrintButton from '../../Components/PrintButton';
@@ -183,34 +184,13 @@ export default function FactureIndex({ quartiers, usages }) {
 
             {/* Statistiques */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 mb-6">
-               {/* Période — synchronisée avec les filtres date du formulaire */}
-                <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500 flex items-center gap-1">
-                        Période
-                        {!filters.date_start && !filters.date_end && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">Mois en cours</span>
-                        )}
-                    </div>
-                    {loading ? <Spinner /> : (
-                        <>
-                            <div className="text-sm font-bold text-gray-700 mt-1">
-                                {filters.date_start
-                                    ? new Date(filters.date_start).toLocaleDateString('fr-FR')
-                                    : meta.periode?.date_start
-                                        ? new Date(meta.periode.date_start).toLocaleDateString('fr-FR')
-                                        : '—'}
-                            </div>
-                            <div className="text-xs text-gray-400">au</div>
-                            <div className="text-sm font-bold text-gray-700">
-                                {filters.date_end
-                                    ? new Date(filters.date_end).toLocaleDateString('fr-FR')
-                                    : meta.periode?.date_end
-                                        ? new Date(meta.periode.date_end).toLocaleDateString('fr-FR')
-                                        : '—'}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <PeriodSelector
+                    dateStart={filters.date_start}
+                    dateEnd={filters.date_end}
+                    onChange={(p) => setFilters(f => ({ ...f, ...p }))}
+                    loading={loading}
+                    periode={meta.periode}
+                />
 
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Total Factures</div>

@@ -44,14 +44,14 @@ class ReleveController extends Controller
      */
     public function list(Request $request)
     {
-        // Période par défaut : mois en cours
+        // Période par défaut : 30 derniers jours
         $dateStart = $request->filled('date_start')
             ? $request->date_start
-            : now()->startOfMonth()->format('Y-m-d');
+            : now()->subDays(29)->format('Y-m-d');
 
         $dateEnd = $request->filled('date_end')
             ? $request->date_end
-            : now()->endOfMonth()->format('Y-m-d');
+            : now()->format('Y-m-d');
 
         $query = DB::table('releve as r')
             ->leftJoin('client as c', 'r.ID_CLIENT', '=', 'c.ID_CLIENT')

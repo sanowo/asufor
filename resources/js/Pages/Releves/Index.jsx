@@ -3,6 +3,7 @@ import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 import PrintButton from '../../Components/PrintButton';
 import Spinner from '../../Components/Spinner';
+import PeriodSelector from '../../Components/PeriodSelector';
 import axios from 'axios';
 
 const EMPTY_FORM = {
@@ -165,10 +166,6 @@ export default function ReleveIndex({ quartiers, usages }) {
 
     const formatMoney = (n) => new Intl.NumberFormat('fr-FR').format(n || 0);
 
-    const isDefaultPeriode = !filters.date_start && !filters.date_end;
-    const displayStart = filters.date_start || meta.periode?.date_start;
-    const displayEnd   = filters.date_end   || meta.periode?.date_end;
-
     // Computed consommation preview
     const consoPrev = formData.nouvel_index && formData.ancien_index
         ? Math.max(0, Number(formData.nouvel_index) - Number(formData.ancien_index))
@@ -180,25 +177,13 @@ export default function ReleveIndex({ quartiers, usages }) {
 
             {/* ── Stat cards ── */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-6">
-                <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500 flex items-center gap-1 flex-wrap">
-                        Période
-                        {isDefaultPeriode && (
-                            <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">Mois en cours</span>
-                        )}
-                    </div>
-                    {loading ? <Spinner size="sm" className="mt-2" /> : (
-                        <>
-                            <div className="text-sm font-bold text-gray-700 mt-1">
-                                {displayStart ? new Date(displayStart).toLocaleDateString('fr-FR') : '—'}
-                            </div>
-                            <div className="text-xs text-gray-400">au</div>
-                            <div className="text-sm font-bold text-gray-700">
-                                {displayEnd ? new Date(displayEnd).toLocaleDateString('fr-FR') : '—'}
-                            </div>
-                        </>
-                    )}
-                </div>
+                <PeriodSelector
+                    dateStart={filters.date_start}
+                    dateEnd={filters.date_end}
+                    onChange={(p) => setFilters(f => ({ ...f, ...p }))}
+                    loading={loading}
+                    periode={meta.periode}
+                />
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Total Relevés</div>
                     {loading ? <Spinner size="sm" className="mt-2" /> : (
@@ -241,7 +226,7 @@ export default function ReleveIndex({ quartiers, usages }) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <input
                         type="text" placeholder="Client (N° ou Nom)"
                         className="border rounded px-3 py-2"
@@ -258,16 +243,6 @@ export default function ReleveIndex({ quartiers, usages }) {
                         <option value="*">Tous les quartiers</option>
                         {quartiers.map(q => <option key={q.ID_QUARTIER} value={q.ID_QUARTIER}>{q.NOM}</option>)}
                     </select>
-                    <input
-                        type="date" className="border rounded px-3 py-2"
-                        value={filters.date_start}
-                        onChange={(e) => setFilters({ ...filters, date_start: e.target.value })}
-                    />
-                    <input
-                        type="date" className="border rounded px-3 py-2"
-                        value={filters.date_end}
-                        onChange={(e) => setFilters({ ...filters, date_end: e.target.value })}
-                    />
                 </div>
             </div>
 

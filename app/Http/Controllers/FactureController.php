@@ -227,14 +227,14 @@ public function list(Request $request)
             $whereParams[] = $request->quartier;
         }
 
-        // Par défaut : mois en cours si aucune date n'est fournie
+        // Par défaut : 30 derniers jours
         $dateStart = $request->filled('date_start')
             ? $request->date_start
-            : now()->startOfMonth()->format('Y-m-d');
+            : now()->subDays(29)->format('Y-m-d');
 
         $dateEnd = $request->filled('date_end')
             ? $request->date_end
-            : now()->endOfMonth()->format('Y-m-d');
+            : now()->format('Y-m-d');
 
         $whereParts[]  = 'f.DATEFACTURE >= CAST(? AS DATE)';
         $whereParams[] = $dateStart;
@@ -414,16 +414,16 @@ public function list(Request $request)
                 COUNT(*) AS cnt,
                 SUM(agg.TOTAL) AS total,
                 SUM(agg.TOTAL_RECU) AS total_recu,
-                COALESCE(SUM(fr.MONTANT_REDUCTION), 0) AS total_reduction,
+                COALESCE((SELECT SUM(fr.MONTANT_REDUCTION) FROM facture_reduction fr
+                          WHERE fr.NUM_FACTURE IN (SELECT NUMERO_FACTURE FROM ($mainQuery) AS tmp)), 0) AS total_reduction,
                 SUM(CASE WHEN agg.REGLEMENT_TYPE = 'GRACIER' THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_gracie,
                 COUNT(CASE WHEN agg.REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
                 SUM(CASE WHEN agg.REGLEMENT_TYPE = 'RECOUVREMENT' THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_recouvrement,
                 COUNT(CASE WHEN agg.REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
                 SUM(CASE WHEN agg.REGLE = 0 AND agg.REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN agg.TOTAL - agg.TOTAL_RECU ELSE 0 END) AS total_impaye,
                 COUNT(CASE WHEN agg.REGLE = 0 AND agg.REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye
-             FROM ($mainQuery) AS agg
-             LEFT JOIN facture_reduction fr ON fr.NUM_FACTURE = agg.NUMERO_FACTURE",
-            $mainParams
+             FROM ($mainQuery) AS agg",
+            array_merge($mainParams, $mainParams)
         );
 
         $meta = [

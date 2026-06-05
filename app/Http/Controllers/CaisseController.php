@@ -102,14 +102,14 @@ public function listOperations(Request $request)
         'draw'           => 'nullable|integer',
     ]);
 
-    // Dates par défaut : mois en cours
+    // Dates par défaut : 30 derniers jours
     $dateStart = $request->filled('date_start')
         ? $request->date_start
-        : now()->startOfMonth()->format('Y-m-d');
+        : now()->subDays(29)->format('Y-m-d');
 
     $dateEnd = $request->filled('date_end')
         ? $request->date_end
-        : now()->endOfMonth()->format('Y-m-d');
+        : now()->format('Y-m-d');
 
     $query = DB::table('operation as o')
         ->leftJoin('typeoperation as t', 'o.ID_TYPEOPERATION', '=', 't.ID_TYPEOPERATION')

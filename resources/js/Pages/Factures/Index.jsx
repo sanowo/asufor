@@ -7,7 +7,7 @@ import Spinner from '../../Components/Spinner';
 
 export default function FactureIndex({ quartiers, usages }) {
     const [factures, setFactures] = useState([]);
-    const [meta, setMeta] = useState({ total: 0, total_recu: 0, total_gracie: 0, total_recouvrement: 0, nb_gracie: 0, nb_recouvrement: 0, count: 0 });
+    const [meta, setMeta] = useState({ total: 0, total_recu: 0, total_gracie: 0, nb_gracie: 0, total_recouvrement: 0, nb_recouvrement: 0, total_impaye: 0, nb_impaye: 0, total_engage: 0, nb_engage: 0, count: 0 });
     const [loading, setLoading] = useState(false);
     const [expandedRows, setExpandedRows] = useState({});
     const [selectedFactures, setSelectedFactures] = useState([]);
@@ -225,15 +225,23 @@ export default function FactureIndex({ quartiers, usages }) {
                     <div className="text-2xl font-bold text-green-600">{formatMoney(meta.total_recu)} FCFA</div>
                 </div>
                 <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500 mb-2">État</div>
-                    <div className="flex flex-col gap-1">
+                    <div className="text-sm text-gray-500 mb-2">État des impayés</div>
+                    <div className="flex flex-col gap-1.5">
                         <div className="flex items-center justify-between">
-                            <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">Gracié ({meta.nb_gracie})</span>
-                            <span className="text-sm font-bold text-purple-700">{formatMoney(meta.total_gracie)}</span>
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-800 font-medium">Impayé ({meta.nb_impaye})</span>
+                            <span className="text-xs font-bold text-red-700">{formatMoney(meta.total_impaye)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-blue-100 text-blue-800 font-medium">Engagé ({meta.nb_engage})</span>
+                            <span className="text-xs font-bold text-blue-700">{formatMoney(meta.total_engage)}</span>
                         </div>
                         <div className="flex items-center justify-between">
                             <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">Recouvert ({meta.nb_recouvrement})</span>
-                            <span className="text-sm font-bold text-yellow-700">{formatMoney(meta.total_recouvrement)}</span>
+                            <span className="text-xs font-bold text-yellow-700">{formatMoney(meta.total_recouvrement)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">Gracié ({meta.nb_gracie})</span>
+                            <span className="text-xs font-bold text-purple-700">{formatMoney(meta.total_gracie)}</span>
                         </div>
                     </div>
                 </div>

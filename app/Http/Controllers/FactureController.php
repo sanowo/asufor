@@ -411,22 +411,30 @@ public function list(Request $request)
                 SUM(TOTAL) AS total,
                 SUM(TOTAL_RECU) AS total_recu,
                 SUM(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN TOTAL ELSE 0 END) AS total_gracie,
-                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL ELSE 0 END) AS total_recouvrement,
                 COUNT(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
-                COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement
+                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL ELSE 0 END) AS total_recouvrement,
+                COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement,
+                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_impaye,
+                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU = 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_impaye,
+                SUM(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN TOTAL - TOTAL_RECU ELSE 0 END) AS total_engage,
+                COUNT(CASE WHEN REGLE = 0 AND TOTAL_RECU > 0 AND REGLEMENT_TYPE NOT IN ('GRACIER','RECOUVREMENT') THEN 1 END) AS nb_engage
              FROM ($mainQuery) AS agg",
             $mainParams
         );
 
         $meta = [
-            'count'            => (int)   ($metaResult->cnt              ?? 0),
-            'total'            => (float) ($metaResult->total             ?? 0),
-            'total_recu'       => (float) ($metaResult->total_recu        ?? 0),
-            'total_gracie'     => (float) ($metaResult->total_gracie      ?? 0),
+            'count'              => (int)   ($metaResult->cnt               ?? 0),
+            'total'              => (float) ($metaResult->total              ?? 0),
+            'total_recu'         => (float) ($metaResult->total_recu         ?? 0),
+            'total_gracie'       => (float) ($metaResult->total_gracie       ?? 0),
+            'nb_gracie'          => (int)   ($metaResult->nb_gracie          ?? 0),
             'total_recouvrement' => (float) ($metaResult->total_recouvrement ?? 0),
-            'nb_gracie'        => (int)   ($metaResult->nb_gracie         ?? 0),
-            'nb_recouvrement'  => (int)   ($metaResult->nb_recouvrement   ?? 0),
-            'periode'          => [
+            'nb_recouvrement'    => (int)   ($metaResult->nb_recouvrement    ?? 0),
+            'total_impaye'       => (float) ($metaResult->total_impaye       ?? 0),
+            'nb_impaye'          => (int)   ($metaResult->nb_impaye          ?? 0),
+            'total_engage'       => (float) ($metaResult->total_engage       ?? 0),
+            'nb_engage'          => (int)   ($metaResult->nb_engage          ?? 0),
+            'periode'            => [
                 'date_start' => $dateStart,
                 'date_end'   => $dateEnd,
                 'is_default' => !$request->filled('date_start') && !$request->filled('date_end'),

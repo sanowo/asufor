@@ -537,15 +537,6 @@ export default function FactureIndex({ quartiers, usages }) {
                                                             </div>
                                                         )}
 
-                                                        {/* Frais de coupure */}
-                                                        {facture.META.frais_to_pay && facture.META.frais_to_pay > 0 && (
-                                                            <div className="bg-orange-50 p-3 rounded">
-                                                                <span className="font-semibold">Frais de coupure à payer:</span>
-                                                                <span className="ml-2 text-orange-600 font-bold">
-                                                                    {formatMoney(facture.META.frais_to_pay)} FCFA
-                                                                </span>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

@@ -107,13 +107,17 @@ class ReleveController extends Controller
         $start  = max(0, (int) ($request->start ?? 0));
         $length = min(200, max(1, (int) ($request->length ?? 50)));
 
-        $total = $query->count();
+        // Aggregate on full filtered result set before pagination
+        $aggQuery = clone $query;
+        $agg = $aggQuery->selectRaw('COUNT(*) as cnt, COALESCE(SUM(f.TOTAL), 0) as total_montant, COALESCE(SUM(r.RELEVE - r.ANCIEN_INDEX), 0) as total_conso')
+                        ->first();
+
+        $total = (int) ($agg->cnt ?? 0);
         $data  = $query->skip($start)->take($length)->get();
 
         $meta = [
-            'consommation' => $data->sum('CONSOMMATION'),
-            'total'        => $data->sum('TOTAL'),
-            'encaisse'     => $data->sum('ENCAISSE'),
+            'consommation' => (float) ($agg->total_conso ?? 0),
+            'total'        => (float) ($agg->total_montant ?? 0),
             'count'        => $total,
             'periode'      => [
                 'date_start' => $dateStart,

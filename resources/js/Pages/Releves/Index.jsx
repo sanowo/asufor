@@ -18,7 +18,7 @@ const EMPTY_FORM = {
 
 export default function ReleveIndex({ quartiers, usages }) {
     const [releves, setReleves]   = useState([]);
-    const [meta, setMeta]         = useState({ consommation: 0, total: 0, encaisse: 0, count: 0, periode: null });
+    const [meta, setMeta]         = useState({ consommation: 0, total: 0, count: 0, periode: null });
     const [loading, setLoading]   = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [errors, setErrors]     = useState({});
@@ -179,7 +179,7 @@ export default function ReleveIndex({ quartiers, usages }) {
             <Head title="Relevés" />
 
             {/* ── Stat cards ── */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-5 mb-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-4 mb-6">
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500 flex items-center gap-1 flex-wrap">
                         Période
@@ -215,12 +215,6 @@ export default function ReleveIndex({ quartiers, usages }) {
                     <div className="text-sm text-gray-500">Montant Total</div>
                     {loading ? <Spinner size="sm" color="purple" className="mt-2" /> : (
                         <div className="text-2xl font-bold text-purple-600">{formatMoney(meta.total)} <span className="text-sm font-normal">FCFA</span></div>
-                    )}
-                </div>
-                <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500">Encaissé</div>
-                    {loading ? <Spinner size="sm" color="orange" className="mt-2" /> : (
-                        <div className="text-2xl font-bold text-orange-600">{formatMoney(meta.encaisse)} <span className="text-sm font-normal">FCFA</span></div>
                     )}
                 </div>
             </div>

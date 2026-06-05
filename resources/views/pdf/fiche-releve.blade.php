@@ -80,7 +80,11 @@
             @else
             <div style="margin-top: 5px; font-size: 11px;">Tous les Quartiers</div>
             @endif
-            <div style="margin-top: 5px; font-size: 10px;">Date: {{ now()->format('d/m/Y') }}</div>
+            <div style="margin-top: 5px; font-size: 10px;">
+                Période : <strong>{{ \Carbon\Carbon::parse($date_start)->format('d/m/Y') }}</strong>
+                au <strong>{{ \Carbon\Carbon::parse($date_end)->format('d/m/Y') }}</strong>
+                &nbsp;|&nbsp; Édité le {{ now()->format('d/m/Y') }}
+            </div>
         </header>
 
         <table>

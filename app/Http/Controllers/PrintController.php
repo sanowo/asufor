@@ -113,17 +113,30 @@ class PrintController extends Controller
         set_time_limit(120);
 
         $validated = $request->validate([
-            'quartier' => 'required'
+            'quartier'     => 'required',
+            'client_usage' => 'nullable|string',
+            'client'       => 'nullable|string',
+            'date_start'   => 'nullable|date',
+            'date_end'     => 'nullable|date',
         ]);
 
-        // Last releve per compteur via a single aggregated join (avoids N+1 correlated subquery)
+        // Calculer la plage de dates : défaut = 30 derniers jours
+        $dateEnd   = $validated['date_end']   ?? date('Y-m-d');
+        $dateStart = $validated['date_start'] ?? date('Y-m-d', strtotime('-29 days'));
+
+        // Dernier relevé par compteur dans la période sélectionnée
         $lastReleve = DB::table('releve as r')
-            ->join(DB::raw('(SELECT ID_COMPTEUR, MAX(DATE_INDEX) as MAX_DATE FROM releve GROUP BY ID_COMPTEUR) as lr'),
+            ->join(
+                DB::raw("(SELECT ID_COMPTEUR, MAX(DATE_INDEX) as MAX_DATE
+                          FROM releve
+                          WHERE DATE_INDEX BETWEEN '{$dateStart}' AND '{$dateEnd}'
+                          GROUP BY ID_COMPTEUR) as lr"),
                 function ($join) {
                     $join->on('r.ID_COMPTEUR', '=', 'lr.ID_COMPTEUR')
                          ->on('r.DATE_INDEX', '=', 'lr.MAX_DATE');
-                })
-            ->select('r.ID_COMPTEUR', 'r.RELEVE as INDEX_COMPTEUR');
+                }
+            )
+            ->select('r.ID_COMPTEUR', 'r.RELEVE as INDEX_COMPTEUR', 'r.DATE_INDEX');
 
         $query = DB::table('client as c')
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
@@ -133,17 +146,29 @@ class PrintController extends Controller
             ->where('c.STATUT', 1)
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
                      'cpt.ID_COMPTEUR', 'cpt.NUM_COMPTEUR',
-                     'lr.INDEX_COMPTEUR',
+                     'lr.INDEX_COMPTEUR', 'lr.DATE_INDEX as DATE_DERNIER_RELEVE',
                      DB::raw('CONCAT(c.NOM, " ", c.PRENOM) as CLIENT'));
 
         if ($validated['quartier'] !== '*') {
             $query->where('c.ID_QUARTIER', $validated['quartier']);
         }
 
+        if (!empty($validated['client_usage'])) {
+            $query->where('c.USED', $validated['client_usage']);
+        }
+
+        if (!empty($validated['client'])) {
+            $query->where(function ($q) use ($validated) {
+                $q->where('c.NUM_CLIENT', 'LIKE', '%' . $validated['client'] . '%')
+                  ->orWhere('c.NOM', 'LIKE', '%' . $validated['client'] . '%')
+                  ->orWhere('c.PRENOM', 'LIKE', '%' . $validated['client'] . '%');
+            });
+        }
+
         $clients = $query->orderBy('q.NOM')->orderBy('c.NOM')->get();
 
         if ($clients->isEmpty()) {
-            return response()->json(['error' => 'Aucun client trouvé'], 404);
+            return response()->json(['error' => 'Aucun client trouvé pour cette période et ces filtres'], 404);
         }
 
         $parametres = $this->getParametres();
@@ -154,9 +179,11 @@ class PrintController extends Controller
         }
 
         $pdf = PDF::loadView('pdf.fiche-releve', [
-            'clients' => $clients,
+            'clients'    => $clients,
             'parametres' => $parametres,
-            'quartier' => $quartier
+            'quartier'   => $quartier,
+            'date_start' => $dateStart,
+            'date_end'   => $dateEnd,
         ]);
 
         $pdf->setPaper('a4', 'landscape');

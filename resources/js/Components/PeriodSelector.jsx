@@ -1,8 +1,8 @@
 const PRESETS = [
-    { label: '30 jours', days: 30 },
-    { label: '3 mois',   days: 90 },
-    { label: '6 mois',   days: 180 },
-    { label: '12 mois',  days: 365 },
+    { label: '30 j',  days: 30  },
+    { label: '3 mois', days: 90  },
+    { label: '6 mois', days: 180 },
+    { label: '12 mois', days: 365 },
 ];
 
 function toYMD(date) {
@@ -19,62 +19,85 @@ export default function PeriodSelector({ dateStart, dateEnd, onChange, loading, 
         onChange({ date_start: toYMD(start), date_end: toYMD(end) });
     };
 
-    const displayStart = dateStart || periode?.date_start;
-    const displayEnd   = dateEnd   || periode?.date_end;
+    const isPresetActive = (days) => {
+        const end   = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - (days - 1));
+        return dateStart === toYMD(start) && dateEnd === toYMD(end);
+    };
+
+    const handleStartChange = (val) => {
+        onChange({ date_start: val, date_end: dateEnd || '' });
+    };
+
+    const handleEndChange = (val) => {
+        onChange({ date_start: dateStart || '', date_end: val });
+    };
+
+    const handleClear = () => {
+        onChange({ date_start: '', date_end: '' });
+    };
 
     return (
-        <div className="bg-white p-4 rounded shadow">
-            <div className="text-sm text-gray-500 mb-2 flex items-center gap-1">
-                Période
-                {isDefault && (
-                    <span className="text-xs bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded">30 derniers jours</span>
-                )}
-            </div>
-
-            {/* Raccourcis */}
-            <div className="flex flex-wrap gap-1 mb-2">
-                {PRESETS.map(({ label, days }) => {
-                    const end   = new Date();
-                    const start = new Date();
-                    start.setDate(end.getDate() - (days - 1));
-                    const active = dateStart === toYMD(start) && dateEnd === toYMD(end);
-                    return (
-                        <button
-                            key={days}
-                            onClick={() => applyPreset(days)}
-                            className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                                active
-                                    ? 'bg-blue-600 text-white border-blue-600'
-                                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
-                            }`}
-                        >
-                            {label}
-                        </button>
-                    );
-                })}
+        <div className="bg-white p-4 rounded shadow space-y-2">
+            <div className="text-sm font-medium text-gray-600 flex items-center justify-between">
+                <span>Période</span>
                 {(dateStart || dateEnd) && (
                     <button
-                        onClick={() => onChange({ date_start: '', date_end: '' })}
-                        className="text-xs px-2 py-0.5 rounded border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300"
+                        onClick={handleClear}
+                        className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                        title="Réinitialiser"
                     >
-                        ✕
+                        ✕ réinitialiser
                     </button>
                 )}
             </div>
 
-            {/* Dates affichées */}
-            {loading ? (
-                <div className="text-xs text-gray-400">Chargement...</div>
-            ) : (
-                <div className="text-xs text-gray-600 space-y-0.5">
-                    <div className="font-medium">
-                        {displayStart ? new Date(displayStart).toLocaleDateString('fr-FR') : '—'}
-                    </div>
-                    <div className="text-gray-400">au</div>
-                    <div className="font-medium">
-                        {displayEnd ? new Date(displayEnd).toLocaleDateString('fr-FR') : '—'}
-                    </div>
+            {/* Raccourcis */}
+            <div className="flex flex-wrap gap-1">
+                {PRESETS.map(({ label, days }) => (
+                    <button
+                        key={days}
+                        onClick={() => applyPreset(days)}
+                        className={`text-xs px-2 py-0.5 rounded border transition-colors ${
+                            isPresetActive(days)
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400 hover:text-blue-600'
+                        }`}
+                    >
+                        {label}
+                    </button>
+                ))}
+            </div>
+
+            {/* Inputs date */}
+            <div className="space-y-1.5">
+                <div>
+                    <label className="text-xs text-gray-400 block mb-0.5">Du</label>
+                    <input
+                        type="date"
+                        className="w-full border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-blue-400"
+                        value={dateStart || ''}
+                        onChange={(e) => handleStartChange(e.target.value)}
+                    />
                 </div>
+                <div>
+                    <label className="text-xs text-gray-400 block mb-0.5">Au</label>
+                    <input
+                        type="date"
+                        className="w-full border rounded px-2 py-1 text-xs text-gray-700 focus:outline-none focus:border-blue-400"
+                        value={dateEnd || ''}
+                        onChange={(e) => handleEndChange(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {isDefault && (
+                <div className="text-xs text-blue-500 italic">Par défaut : 30 derniers jours</div>
+            )}
+
+            {loading && (
+                <div className="text-xs text-gray-400">Chargement...</div>
             )}
         </div>
     );

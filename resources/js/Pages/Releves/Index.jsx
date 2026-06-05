@@ -211,7 +211,13 @@ export default function ReleveIndex({ quartiers, usages }) {
                     <div className="flex gap-2">
                         <PrintButton
                             endpoint="/print/fiche-releve"
-                            data={{ quartier: filters.id_quartier !== '*' ? filters.id_quartier : '*' }}
+                            data={{
+                                quartier:      filters.id_quartier !== '*' ? filters.id_quartier : '*',
+                                client_usage:  filters.client_usage !== '*' ? filters.client_usage : null,
+                                client:        filters.client || null,
+                                date_start:    filters.date_start || null,
+                                date_end:      filters.date_end || null,
+                            }}
                             label="Fiche Relevé"
                             icon="document"
                             filename={`fiche-releve-${Date.now()}.pdf`}

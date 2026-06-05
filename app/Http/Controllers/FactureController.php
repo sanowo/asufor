@@ -671,14 +671,12 @@ public function list(Request $request)
             $whereParts[]  = 'c.USED = ?';
             $whereParams[] = $filters['client_usage'];
         }
-        if (!empty($filters['date_start'])) {
-            $whereParts[]  = 'f.DATEFACTURE >= CAST(? AS DATE)';
-            $whereParams[] = $filters['date_start'];
-        }
-        if (!empty($filters['date_end'])) {
-            $whereParts[]  = 'f.DATEFACTURE <= CAST(? AS DATE)';
-            $whereParams[] = $filters['date_end'];
-        }
+        $dateStart = !empty($filters['date_start']) ? $filters['date_start'] : date('Y-m-d', strtotime('-29 days'));
+        $dateEnd   = !empty($filters['date_end'])   ? $filters['date_end']   : date('Y-m-d');
+        $whereParts[]  = 'f.DATEFACTURE >= CAST(? AS DATE)';
+        $whereParams[] = $dateStart;
+        $whereParts[]  = 'f.DATEFACTURE <= CAST(? AS DATE)';
+        $whereParams[] = $dateEnd;
 
         $whereSQL = count($whereParts) ? 'WHERE ' . implode(' AND ', $whereParts) : '';
 

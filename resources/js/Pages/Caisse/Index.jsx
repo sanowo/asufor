@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PeriodSelector from '../../Components/PeriodSelector';
 import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
@@ -19,6 +19,12 @@ export default function CaisseIndex({ typeOperations }) {
     const [clientDetails, setClientDetails]         = useState(null);
     const [paymentResult, setPaymentResult]         = useState(null);
     const [errors, setErrors]                       = useState({});
+
+    // Autocomplete recherche facture
+    const [factureSearch, setFactureSearch]         = useState('');
+    const [factureSuggestions, setFactureSuggestions] = useState([]);
+    const [factureSearchLoading, setFactureSearchLoading] = useState(false);
+    const factureSearchTimeout                      = useRef(null);
 
     const [filters, setFilters] = useState({
         date_start: '', date_end: '', status: '*', type_operation: '*',
@@ -66,17 +72,53 @@ export default function CaisseIndex({ typeOperations }) {
     // ── Helpers ──────────────────────────────────────────────────────────────
     const formatMoney = (amount) => new Intl.NumberFormat('fr-FR').format(amount || 0);
 
-    // ── Rechercher facture ───────────────────────────────────────────────────
+    // ── Autocomplete recherche facture ───────────────────────────────────────
+    const handleFactureSearchChange = (value) => {
+        setFactureSearch(value);
+        setFactureDetails(null);
+        setFactureSuggestions([]);
+        clearTimeout(factureSearchTimeout.current);
+        if (value.length < 2) return;
+        factureSearchTimeout.current = setTimeout(async () => {
+            setFactureSearchLoading(true);
+            try {
+                const res = await axios.get('/factures/list', {
+                    params: { numero: value, start: 0, length: 8, draw: 1 }
+                });
+                setFactureSuggestions(res.data.data.result || []);
+            } catch {
+                setFactureSuggestions([]);
+            } finally {
+                setFactureSearchLoading(false);
+            }
+        }, 300);
+    };
+
+    const selectFactureSuggestion = async (facture) => {
+        setFactureSearch(facture.NUMERO_FACTURE);
+        setFactureSuggestions([]);
+        setErrors({});
+        try {
+            const response = await axios.get(`/factures/${facture.NUMERO_FACTURE}`);
+            setFactureDetails(response.data.success);
+            setPaymentForm(prev => ({ ...prev, numero_facture: facture.NUMERO_FACTURE, pret_include: [], pay_frais_coupure: false }));
+        } catch {
+            setErrors({ facture: 'Facture non trouvée' });
+            setFactureDetails(null);
+        }
+    };
+
+    // ── Rechercher facture (gardé pour compatibilité) ────────────────────────
     const searchFacture = async () => {
-        if (!paymentForm.numero_facture) {
+        if (!factureSearch) {
             setErrors({ facture: 'Veuillez saisir un numéro de facture' });
             return;
         }
         setErrors({});
         try {
-            const response = await axios.get(`/factures/${paymentForm.numero_facture}`);
+            const response = await axios.get(`/factures/${factureSearch}`);
             setFactureDetails(response.data.success);
-            setPaymentForm(prev => ({ ...prev, pret_include: [], pay_frais_coupure: false }));
+            setPaymentForm(prev => ({ ...prev, numero_facture: factureSearch, pret_include: [], pay_frais_coupure: false }));
         } catch {
             setErrors({ facture: 'Facture non trouvée' });
             setFactureDetails(null);
@@ -310,17 +352,57 @@ export default function CaisseIndex({ typeOperations }) {
                     <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">Nouveau Paiement - Waterfall</h3>
-                            <button onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setPaymentForm({ numero_facture: '', montant_recu: '', pret_include: [], pay_frais_coupure: false, date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
+                            <button onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); setPaymentForm({ numero_facture: '', montant_recu: '', pret_include: [], pay_frais_coupure: false, date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
                         </div>
                         <form onSubmit={handlePayment} className="space-y-4">
                             <div className="border-b pb-4">
                                 <label className="block text-sm font-medium mb-2">1. Rechercher la facture</label>
-                                <div className="flex gap-2">
-                                    <input type="text" className="flex-1 border rounded px-3 py-2" placeholder="Numéro de facture"
-                                        value={paymentForm.numero_facture}
-                                        onChange={(e) => setPaymentForm({ ...paymentForm, numero_facture: e.target.value })} />
-                                    <button type="button" onClick={searchFacture} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Rechercher</button>
+                                <div className="relative">
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <input
+                                                type="text"
+                                                className="w-full border rounded px-3 py-2 pr-8"
+                                                placeholder="N° facture (ex: F-2024-001)..."
+                                                value={factureSearch}
+                                                onChange={(e) => handleFactureSearchChange(e.target.value)}
+                                                autoComplete="off"
+                                            />
+                                            {factureSearchLoading && (
+                                                <div className="absolute right-2 top-2.5"><Spinner size="sm" /></div>
+                                            )}
+                                        </div>
+                                        <button type="button" onClick={searchFacture} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap">
+                                            Rechercher
+                                        </button>
+                                    </div>
+                                    {factureSuggestions.length > 0 && (
+                                        <div className="absolute z-20 w-full bg-white border rounded shadow-lg mt-1 max-h-56 overflow-y-auto">
+                                            {factureSuggestions.map((f) => (
+                                                <button
+                                                    key={f.NUMERO_FACTURE}
+                                                    type="button"
+                                                    onClick={() => selectFactureSuggestion(f)}
+                                                    className="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm border-b last:border-0 flex items-center justify-between gap-4"
+                                                >
+                                                    <span className="font-medium text-blue-700">{f.NUMERO_FACTURE}</span>
+                                                    <span className="text-gray-600 truncate">{f.CLIENT}</span>
+                                                    <span className={`shrink-0 px-1.5 py-0.5 text-xs rounded font-medium ${
+                                                        f.REGLE ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {f.REGLE ? 'Réglé' : `${new Intl.NumberFormat('fr-FR').format(f.TOTAL - f.TOTAL_RECU)} FCFA`}
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
+                                {factureDetails && (
+                                    <div className="mt-2 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded flex items-center gap-1">
+                                        <span>✓</span>
+                                        <span>Facture <strong>{factureSearch}</strong> sélectionnée — {factureDetails.releves?.[0] ? `client chargé` : 'aucun relevé'}</span>
+                                    </div>
+                                )}
                                 {errors.facture && <p className="text-red-500 text-sm mt-1">{errors.facture}</p>}
                             </div>
 
@@ -422,7 +504,7 @@ export default function CaisseIndex({ typeOperations }) {
                             </div>
 
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => { setShowPaymentModal(false); setFactureDetails(null); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400" disabled={!factureDetails}>Enregistrer Paiement</button>
                             </div>
                         </form>

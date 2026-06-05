@@ -17,6 +17,7 @@ use Inertia\Inertia;
 // Dashboard Principal
 Route::get('/', [\App\Http\Controllers\DashboardController::class, 'index'])->name('home');
 Route::get('/dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
+Route::get('/dashboard/stats', [\App\Http\Controllers\DashboardController::class, 'stats'])->name('dashboard.stats');
 
 // Routes Relevés
 Route::prefix('releves')->group(function () {

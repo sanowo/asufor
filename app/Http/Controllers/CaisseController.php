@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\PaiementService;
 use App\Services\FacturationService;
+use App\Services\AnalyticsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -12,11 +13,16 @@ class CaisseController extends Controller
 {
     protected $paiementService;
     protected $facturationService;
+    protected $analyticsService;
 
-    public function __construct(PaiementService $paiementService, FacturationService $facturationService)
-    {
+    public function __construct(
+        PaiementService $paiementService,
+        FacturationService $facturationService,
+        AnalyticsService $analyticsService
+    ) {
         $this->paiementService = $paiementService;
         $this->facturationService = $facturationService;
+        $this->analyticsService = $analyticsService;
     }
 
     /**
@@ -246,12 +252,28 @@ public function listOperations(Request $request)
         ]);
 
         try {
+            // Récupérer l'opération AVANT confirmation pour les analytics
+            $operation = DB::table('operation')
+                ->where('ID_OPERATION', $validated['id_operation'])
+                ->first();
+
             $success = $this->paiementService->confirmOperation(
                 $validated['id_operation'],
                 1 // TODO: Récupérer ID user authentifié
             );
 
             if ($success) {
+                // ANALYTICS: enregistrer la confirmation (ATTENTE → CONFIRM)
+                if ($operation && $operation->STATUS === 'ATTENTE'
+                    && in_array($operation->ID_TYPEOPERATION, [13, 14, 23])) {
+                    $this->analyticsService->handleOperationCreated(
+                        $operation->DATE_OPERATION,
+                        $operation->ID_TYPEOPERATION,
+                        $operation->MONTANT,
+                        'CONFIRM'
+                    );
+                }
+
                 return response()->json([
                     'success' => true,
                     'message' => 'Opération confirmée avec succès'
@@ -363,6 +385,18 @@ public function listOperations(Request $request)
                 ]);
 
             DB::commit();
+
+            // ANALYTICS: décrémenter si l'opération était CONFIRM
+            if ($operation && in_array($operation->ID_TYPEOPERATION, [13, 14, 23])
+                && $operation->STATUS === 'CONFIRM') {
+                $this->analyticsService->handleOperationStatusChanged(
+                    $operation->DATE_OPERATION,
+                    $operation->ID_TYPEOPERATION,
+                    $operation->MONTANT,
+                    'CONFIRM',
+                    'ANNULE'
+                );
+            }
 
             return response()->json([
                 'success' => true,

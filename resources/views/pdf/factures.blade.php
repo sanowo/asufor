@@ -283,21 +283,9 @@
                     <td class="center-align">{{ number_format($data['facture']->ANCIEN_INDEX ?? 0, 0, ',', ' ') }}</td>
                     <td class="center-align">{{ number_format($data['facture']->NOUVEL_INDEX ?? 0, 0, ',', ' ') }}</td>
                     <td class="center-align">{{ number_format($data['facture']->CONSOMMATION ?? 0, 0, ',', ' ') }} m³</td>
-                    <td class="right-align">{{ number_format($data['facture']->TARIF ?? 0, 0, ',', ' ') }}</td>
-                    <td class="right-align">{{ number_format($data['facture']->MONTANTCONSOMMATION ?? 0, 0, ',', ' ') }}</td>
+                    <td class="right-align">-</td>
+                    <td class="right-align">{{ number_format($data['facture']->TOTAL ?? 0, 0, ',', ' ') }}</td>
                 </tr>
-                @if($data['facture']->MONTANTABONNEMENT > 0)
-                <tr>
-                    <td colspan="5">Abonnement</td>
-                    <td class="right-align">{{ number_format($data['facture']->MONTANTABONNEMENT, 0, ',', ' ') }}</td>
-                </tr>
-                @endif
-                @if($data['facture']->MONTANTPENALITE > 0)
-                <tr>
-                    <td colspan="5">Pénalités de retard</td>
-                    <td class="right-align">{{ number_format($data['facture']->MONTANTPENALITE, 0, ',', ' ') }}</td>
-                </tr>
-                @endif
             </tbody>
         </table>
 
@@ -332,7 +320,7 @@
         <div class="total-section">
             <div class="total-row">
                 <span class="total-label">Montant Facture:</span>
-                <span class="total-value">{{ number_format($data['facture']->TOTFACTURE, 0, ',', ' ') }} FCFA</span>
+                <span class="total-value">{{ number_format($data['facture']->TOTAL ?? 0, 0, ',', ' ') }} FCFA</span>
             </div>
             @if(isset($data['reduction']) && $data['reduction'])
             <div class="total-row reduction-row">
@@ -347,22 +335,22 @@
                 <span class="total-value">{{ number_format($data['reduction']->MONTANT_APRES_REDUCTION, 0, ',', ' ') }} FCFA</span>
             </div>
             @endif
-            @if($data['facture']->TOTAL_RECU > 0)
+            @if(($data['facture']->RECU ?? 0) > 0)
             <div class="total-row">
                 <span class="total-label">Déjà Payé:</span>
-                <span class="total-value paid-badge">-{{ number_format($data['facture']->TOTAL_RECU, 0, ',', ' ') }} FCFA</span>
+                <span class="total-value paid-badge">-{{ number_format($data['facture']->RECU, 0, ',', ' ') }} FCFA</span>
             </div>
             @endif
             <div class="total-row final-total">
                 <span class="total-label">
-                    @if($data['facture']->IMPAYE > 0)
+                    @if(($data['facture']->IMPAYE ?? 0) > 0)
                     RESTANT À PAYER:
                     @else
                     TOTAL:
                     @endif
                 </span>
-                <span class="total-value {{ $data['facture']->IMPAYE > 0 ? 'impaye-badge' : 'paid-badge' }}">
-                    {{ number_format($data['facture']->IMPAYE > 0 ? $data['facture']->IMPAYE : $data['facture']->TOTFACTURE, 0, ',', ' ') }} FCFA
+                <span class="total-value {{ ($data['facture']->IMPAYE ?? 0) > 0 ? 'impaye-badge' : 'paid-badge' }}">
+                    {{ number_format(($data['facture']->IMPAYE ?? 0) > 0 ? $data['facture']->IMPAYE : ($data['facture']->TOTAL ?? 0), 0, ',', ' ') }} FCFA
                 </span>
             </div>
         </div>

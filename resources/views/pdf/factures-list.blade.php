@@ -165,7 +165,7 @@
                         <span class="status-badge" style="background-color: #fff3e0; color: #e65100;">Recouvr.</span>
                     @elseif($facture->REGLE == 1)
                         <span class="status-badge badge-regle">Réglé</span>
-                    @elseif($facture->TOTAL_RECU > 0)
+                    @elseif(($facture->RECU ?? 0) > 0)
                         <span class="status-badge badge-engage">Engagé</span>
                     @else
                         <span class="status-badge badge-impaye">Impayé</span>

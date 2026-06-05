@@ -44,11 +44,22 @@ class ReleveController extends Controller
      */
     public function list(Request $request)
     {
+        // Période par défaut : mois en cours
+        $dateStart = $request->filled('date_start')
+            ? $request->date_start
+            : now()->startOfMonth()->format('Y-m-d');
+
+        $dateEnd = $request->filled('date_end')
+            ? $request->date_end
+            : now()->endOfMonth()->format('Y-m-d');
+
         $query = DB::table('releve as r')
             ->leftJoin('client as c', 'r.ID_CLIENT', '=', 'c.ID_CLIENT')
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
             ->leftJoin('facture_v2 as f', 'r.ID_INDEX', '=', 'f.ID_RELEVE')
             ->leftJoin('compteur as compt', 'r.ID_COMPTEUR', '=', 'compt.ID_COMPTEUR')
+            ->whereDate('r.DATE_INDEX', '>=', $dateStart)
+            ->whereDate('r.DATE_INDEX', '<=', $dateEnd)
             ->select(
                 'r.ID_INDEX',
                 'compt.NUM_COMPTEUR',
@@ -64,8 +75,7 @@ class ReleveController extends Controller
                 DB::raw('(SELECT IF(SUM(MONTANT),SUM(MONTANT),0) FROM operation_detail WHERE ID_OP_TARGET = f.NUMERO_FACTURE AND ID_TYPEOPERATION IN (12,13)) AS ENCAISSE')
             );
 
-        // Filtres
-        if ($request->client) {
+        if ($request->filled('client')) {
             if (is_numeric($request->client)) {
                 $query->where('c.NUM_CLIENT', $request->client);
             } else {
@@ -76,55 +86,47 @@ class ReleveController extends Controller
             }
         }
 
-        if ($request->client_usage && $request->client_usage != '*') {
+        if ($request->filled('client_usage') && $request->client_usage !== '*') {
             $query->where('c.USED', $request->client_usage);
         }
 
-        if ($request->id_quartier && $request->id_quartier != '*') {
+        if ($request->filled('id_quartier') && $request->id_quartier !== '*') {
             $query->where('c.ID_QUARTIER', $request->id_quartier);
         }
 
-        if ($request->min_index) {
+        if ($request->filled('min_index')) {
             $query->where('r.RELEVE', '>=', $request->min_index);
         }
 
-        if ($request->max_index) {
+        if ($request->filled('max_index')) {
             $query->where('r.RELEVE', '<=', $request->max_index);
-        }
-
-        if ($request->date_start) {
-            $query->whereDate('r.DATE_INDEX', '>=', $request->date_start);
-        }
-
-        if ($request->date_end) {
-            $query->whereDate('r.DATE_INDEX', '<=', $request->date_end);
         }
 
         $query->orderBy('r.DATE_LOG', 'DESC');
 
-        // Pagination
-        $start = $request->start ?? 0;
-        $length = $request->length ?? 10;
+        $start  = max(0, (int) ($request->start ?? 0));
+        $length = min(200, max(1, (int) ($request->length ?? 50)));
 
         $total = $query->count();
-        $data = $query->skip($start)->take($length)->get();
+        $data  = $query->skip($start)->take($length)->get();
 
-        // Métadonnées
         $meta = [
             'consommation' => $data->sum('CONSOMMATION'),
-            'total' => $data->sum('TOTAL'),
-            'encaisse' => $data->sum('ENCAISSE'),
-            'count' => $total
+            'total'        => $data->sum('TOTAL'),
+            'encaisse'     => $data->sum('ENCAISSE'),
+            'count'        => $total,
+            'periode'      => [
+                'date_start' => $dateStart,
+                'date_end'   => $dateEnd,
+                'is_default' => !$request->filled('date_start') && !$request->filled('date_end'),
+            ],
         ];
 
         return response()->json([
-            'draw' => $request->draw,
-            'recordsTotal' => $total,
+            'draw'            => (int) ($request->draw ?? 1),
+            'recordsTotal'    => $total,
             'recordsFiltered' => $total,
-            'data' => [
-                'meta' => $meta,
-                'result' => $data
-            ]
+            'data'            => ['meta' => $meta, 'result' => $data],
         ]);
     }
 
@@ -297,17 +299,43 @@ class ReleveController extends Controller
                 return response()->json(['errors' => ['not_found' => 'Relevé non trouvé']], 404);
             }
 
+            $consommation = $releve->RELEVE - $releve->ANCIEN_INDEX;
+
+            // Récupérer la facture AVANT suppression pour les analytics
+            $facture = DB::table('facture_v2')->where('ID_RELEVE', $id)->first();
+
+            // Supprimer facture_pret associées
+            if ($facture) {
+                DB::table('facture_pret')->where('NUMERO_FACTURE', $facture->NUMERO_FACTURE)->delete();
+                DB::table('facture_reduction')->where('NUM_FACTURE', $facture->NUMERO_FACTURE)->delete();
+            }
+
             // Supprimer facture_v2
             DB::table('facture_v2')->where('ID_RELEVE', $id)->delete();
 
-            // Supprimer facture_pret associées (même numéro facture)
-            $num_facture = DB::table('facture_v2')->where('ID_RELEVE', $id)->value('NUMERO_FACTURE');
-            if ($num_facture) {
-                DB::table('facture_pret')->where('NUMERO_FACTURE', $num_facture)->delete();
-            }
-
             // Supprimer relevé
             DB::table('releve')->where('ID_INDEX', $id)->delete();
+
+            // ANALYTICS: Décrémenter après suppression réussie
+            $this->analyticsService->handleReleveDeleted($releve->DATE_INDEX, $consommation);
+            if ($facture) {
+                $hasReduction = DB::table('facture_reduction')
+                    ->where('NUM_FACTURE', $facture->NUMERO_FACTURE)
+                    ->exists();
+                $montantReduction = $hasReduction
+                    ? DB::table('facture_reduction')->where('NUM_FACTURE', $facture->NUMERO_FACTURE)->sum('MONTANT_REDUCTION')
+                    : 0;
+
+                $this->analyticsService->handleFactureDeleted(
+                    $facture->DATEFACTURE,
+                    $facture->TOTAL,
+                    $facture->RECU,
+                    $facture->IMPAYE,
+                    $facture->REGLE,
+                    $hasReduction,
+                    $montantReduction
+                );
+            }
 
             DB::commit();
 

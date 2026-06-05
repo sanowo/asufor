@@ -21,7 +21,7 @@ class ClientController extends Controller
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
             ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
-                DB::raw('(SELECT COUNT(*) FROM compteur WHERE NUM_CLIENT = c.NUM_CLIENT) as NB_COMPTEURS'),
+                DB::raw('(SELECT COUNT(*) FROM compteur WHERE ID_CLIENT = c.ID_CLIENT) as NB_COMPTEURS'),
                 DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUM_CLIENT = c.NUM_CLIENT) as TOTAL_IMPAYE'));
 
         // Apply view filter
@@ -60,7 +60,7 @@ class ClientController extends Controller
                 })->whereNotExists(function($q) {
                     $q->select(DB::raw(1))
                       ->from('compteur')
-                      ->whereColumn('compteur.NUM_CLIENT', 'c.NUM_CLIENT')
+                      ->whereColumn('compteur.ID_CLIENT', 'c.ID_CLIENT')
                       ->where('compteur.ACTIF', 1);
                 });
                 break;
@@ -116,7 +116,14 @@ class ClientController extends Controller
 
         if (!$client) return response()->json(['error' => 'Client non trouvé'], 404);
 
-        $compteurs = DB::table('compteur')->where('NUM_CLIENT', $num_client)->get();
+        $compteurs = DB::table('compteur as co')
+            ->where('co.ID_CLIENT', $client->ID_CLIENT)
+            ->select(
+                'co.*',
+                DB::raw('(SELECT r.RELEVE FROM releve r WHERE r.ID_COMPTEUR = co.ID_COMPTEUR ORDER BY r.DATE_INDEX DESC LIMIT 1) as LAST_RELEVE'),
+                DB::raw('(SELECT r.DATE_INDEX FROM releve r WHERE r.ID_COMPTEUR = co.ID_COMPTEUR ORDER BY r.DATE_INDEX DESC LIMIT 1) as LAST_RELEVE_DATE')
+            )
+            ->get();
         $factures = DB::table('facture_v2')->where('NUM_CLIENT', $num_client)->where('IMPAYE', '>', 0)->orderBy('DATEFACTURE', 'desc')->limit(10)->get();
         $prets = DB::table('pret')->where('NUM_CLIENT', $num_client)->where('ACTIF', 1)->get();
 
@@ -155,8 +162,11 @@ class ClientController extends Controller
 
     public function destroy($num_client)
     {
-        $hasFactures = DB::table('facture_v2')->where('NUM_CLIENT', $num_client)->exists();
-        $hasCompteurs = DB::table('compteur')->where('NUM_CLIENT', $num_client)->exists();
+        $client = DB::table('client')->where('NUM_CLIENT', $num_client)->first();
+        if (!$client) return response()->json(['errors' => ['general' => 'Client non trouvé']], 404);
+
+        $hasFactures  = DB::table('facture_v2')->where('NUM_CLIENT', $num_client)->exists();
+        $hasCompteurs = DB::table('compteur')->where('ID_CLIENT', $client->ID_CLIENT)->exists();
 
         if ($hasFactures || $hasCompteurs) {
             return response()->json(['errors' => ['general' => 'Impossible de supprimer: le client a des factures ou des compteurs']], 400);

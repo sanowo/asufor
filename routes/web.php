@@ -30,14 +30,14 @@ Route::prefix('releves')->group(function () {
 Route::prefix('factures')->group(function () {
     Route::get('/', [\App\Http\Controllers\FactureController::class, 'index'])->name('factures.index');
     Route::get('/list', [\App\Http\Controllers\FactureController::class, 'list'])->name('factures.list');
-    Route::get('/{numero}', [\App\Http\Controllers\FactureController::class, 'show'])->name('factures.show');
     Route::post('/grace', [\App\Http\Controllers\FactureController::class, 'grace'])->name('factures.grace');
     Route::post('/recouvrement', [\App\Http\Controllers\FactureController::class, 'recouvrement'])->name('factures.recouvrement');
-    Route::get('/print/{numero}', [\App\Http\Controllers\FactureController::class, 'print'])->name('factures.print');
     Route::get('/generate-bulk-page', [\App\Http\Controllers\FactureController::class, 'generateBulkPage'])->name('factures.generate.page');
     Route::post('/generate-bulk', [\App\Http\Controllers\FactureController::class, 'generateBulk'])->name('factures.generate');
     Route::get('/update-echeance-page', [\App\Http\Controllers\FactureController::class, 'updateEcheanceBulkPage'])->name('factures.echeance.page');
     Route::post('/update-echeance', [\App\Http\Controllers\FactureController::class, 'updateEcheanceBulk'])->name('factures.echeance');
+    // Wildcard routes last to avoid swallowing named paths above
+    Route::get('/{numero}', [\App\Http\Controllers\FactureController::class, 'show'])->name('factures.show');
 });
 
 // Routes Caisse
@@ -131,6 +131,6 @@ Route::prefix('print')->group(function () {
     Route::post('/bons-coupure', [\App\Http\Controllers\PrintController::class, 'printBonsCoupure'])->name('print.bons');
     Route::post('/fiche-releve', [\App\Http\Controllers\PrintController::class, 'printFicheReleve'])->name('print.releve');
     Route::post('/operations', [\App\Http\Controllers\PrintController::class, 'printOperations'])->name('print.operations');
-    Route::get('/clients-suspendus', [\App\Http\Controllers\PrintController::class, 'printClientsSuspendus'])->name('print.suspendus');
+    Route::post('/clients-suspendus', [\App\Http\Controllers\PrintController::class, 'printClientsSuspendus'])->name('print.suspendus');
     Route::post('/factures-list', [\App\Http\Controllers\PrintController::class, 'printFacturesList'])->name('print.factures.list');
 });

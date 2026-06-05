@@ -129,8 +129,10 @@
                     {{ $op->IS_REVENUE == 0 ? number_format($op->MONTANT, 0, ',', ' ') : '' }}
                 </td>
                 <td class="center">
-                    @if($op->VALIDE == 1)
+                    @if($op->STATUS === 'CONFIRM')
                     <span style="color: #388e3c;">✓</span>
+                    @elseif($op->STATUS === 'ANNULE')
+                    <span style="color: #d32f2f;">✗</span>
                     @else
                     <span style="color: #ff9800;">⏳</span>
                     @endif

@@ -133,6 +133,25 @@ export default function FactureIndex({ quartiers, usages }) {
         }
     };
 
+    // Imprimer une facture individuelle
+    const handlePrint = async (numero) => {
+        try {
+            const response = await axios.post('/print/factures', { facture_numbers: [numero] }, {
+                responseType: 'blob',
+            });
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `facture-${numero}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch {
+            alert('Erreur lors de l\'impression de la facture');
+        }
+    };
+
     // Formater montant
     const formatMoney = (amount) => {
         return new Intl.NumberFormat('fr-FR').format(amount || 0);

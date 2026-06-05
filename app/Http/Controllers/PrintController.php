@@ -13,6 +13,8 @@ class PrintController extends Controller
      */
     public function printFactures(Request $request)
     {
+        set_time_limit(120);
+
         $useFilters = $request->input('use_filters', false);
 
         if ($useFilters) {
@@ -55,6 +57,8 @@ class PrintController extends Controller
      */
     public function printBonsCoupure(Request $request)
     {
+        set_time_limit(120);
+
         $useFilters = $request->input('use_filters', false);
 
         if ($useFilters) {
@@ -64,7 +68,7 @@ class PrintController extends Controller
             $factures = DB::table('facture_v2 as f')
                 ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
                 ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
-                ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+                ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
                 ->whereIn('f.NUMERO_FACTURE', $factureNumbers)
                 ->where('f.REGLE', 0)
                 ->select('f.*', 'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM')
@@ -78,7 +82,7 @@ class PrintController extends Controller
             $factures = DB::table('facture_v2 as f')
                 ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
                 ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
-                ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+                ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
                 ->whereIn('f.NUMERO_FACTURE', $validated['facture_numbers'])
                 ->where('f.REGLE', 0)
                 ->select('f.*', 'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM')
@@ -106,17 +110,30 @@ class PrintController extends Controller
      */
     public function printFicheReleve(Request $request)
     {
+        set_time_limit(120);
+
         $validated = $request->validate([
             'quartier' => 'required'
         ]);
 
+        // Last releve per compteur via a single aggregated join (avoids N+1 correlated subquery)
+        $lastReleve = DB::table('releve as r')
+            ->join(DB::raw('(SELECT ID_COMPTEUR, MAX(DATE_INDEX) as MAX_DATE FROM releve GROUP BY ID_COMPTEUR) as lr'),
+                function ($join) {
+                    $join->on('r.ID_COMPTEUR', '=', 'lr.ID_COMPTEUR')
+                         ->on('r.DATE_INDEX', '=', 'lr.MAX_DATE');
+                })
+            ->select('r.ID_COMPTEUR', 'r.RELEVE as INDEX_COMPTEUR');
+
         $query = DB::table('client as c')
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
-            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
-            ->leftJoin('compteur as cpt', 'c.NUM_CLIENT', '=', 'cpt.NUM_CLIENT')
+            ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->leftJoin('compteur as cpt', 'c.ID_CLIENT', '=', 'cpt.ID_CLIENT')
+            ->leftJoinSub($lastReleve, 'lr', 'cpt.ID_COMPTEUR', '=', 'lr.ID_COMPTEUR')
             ->where('c.STATUT', 0)
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
-                     'cpt.NUM_COMPTEUR', 'cpt.INDEX_COMPTEUR',
+                     'cpt.ID_COMPTEUR', 'cpt.NUM_COMPTEUR',
+                     'lr.INDEX_COMPTEUR',
                      DB::raw('CONCAT(c.NOM, " ", c.PRENOM) as CLIENT'));
 
         if ($validated['quartier'] !== '*') {
@@ -156,23 +173,20 @@ class PrintController extends Controller
             'date_start' => 'required|date',
             'date_end' => 'required|date',
             'status' => 'nullable|string',
-            'type_operation' => 'nullable|integer'
+            'type_operation' => 'nullable|string'
         ]);
 
         $query = DB::table('operation as o')
             ->leftJoin('typeoperation as t', 'o.ID_TYPEOPERATION', '=', 't.ID_TYPEOPERATION')
+            ->leftJoin('utilisateur as u', 'o.ID_USER', '=', 'u.ID_USER')
             ->whereBetween('o.DATE_OPERATION', [$validated['date_start'], $validated['date_end']])
-            ->select('o.*', 't.LIBELLE as TYPE_LABEL', 't.IS_REVENUE');
+            ->select('o.*', 't.LIBELLE as TYPE_LABEL', 't.IS_REVENUE', 'u.NOM as USER_NAME');
 
-        if (isset($validated['status']) && $validated['status'] !== '*') {
-            if ($validated['status'] === 'pending') {
-                $query->where('o.VALIDE', 0);
-            } else if ($validated['status'] === 'confirmed') {
-                $query->where('o.VALIDE', 1);
-            }
+        if (!empty($validated['status']) && $validated['status'] !== '*') {
+            $query->where('o.STATUS', $validated['status']);
         }
 
-        if (isset($validated['type_operation']) && $validated['type_operation'] !== '*') {
+        if (!empty($validated['type_operation']) && $validated['type_operation'] !== '*') {
             $query->where('o.ID_TYPEOPERATION', $validated['type_operation']);
         }
 
@@ -215,10 +229,10 @@ class PrintController extends Controller
 
         $query = DB::table('client as c')
             ->leftJoin('quartier as q', 'c.ID_QUARTIER', '=', 'q.ID_QUARTIER')
-            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
             ->where('c.STATUT', 1)
             ->select('c.*', 'q.NOM as QUARTIER', 'u.NOM as USAGE_NOM',
-                DB::raw('(SELECT COUNT(*) FROM compteur WHERE NUM_CLIENT = c.NUM_CLIENT) as NB_COMPTEURS'),
+                DB::raw('(SELECT COUNT(*) FROM compteur WHERE ID_CLIENT = c.ID_CLIENT) as NB_COMPTEURS'),
                 DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUM_CLIENT = c.NUM_CLIENT) as TOTAL_IMPAYE'));
 
         if (isset($validated['quartier'])) {
@@ -253,6 +267,8 @@ class PrintController extends Controller
      */
     public function printFacturesList(Request $request)
     {
+        set_time_limit(120);
+
         $useFilters = $request->input('use_filters', false);
 
         if ($useFilters) {
@@ -273,9 +289,9 @@ class PrintController extends Controller
             ->select('f.*',
                 DB::raw("CONCAT(c.NOM, ' ', c.PRENOM) as CLIENT"),
                 'q.NOM as QUARTIER',
-                DB::raw('(SELECT SUM(TOTAL) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
-                        (SELECT COALESCE(SUM(MONTANT_TRANCHE), 0) FROM facture_pret WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) as MONTANT_TOTAL'),
-                DB::raw('(SELECT SUM(IMPAYE) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
+                DB::raw('(SELECT COALESCE(SUM(TOTAL), 0) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
+                        (SELECT COALESCE(SUM(TOTAL), 0) FROM facture_pret WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) as MONTANT_TOTAL'),
+                DB::raw('(SELECT COALESCE(SUM(IMPAYE), 0) FROM facture_v2 WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) +
                         (SELECT COALESCE(SUM(IMPAYE), 0) FROM facture_pret WHERE NUMERO_FACTURE = f.NUMERO_FACTURE) as RESTANT'))
             ->orderBy('f.DATEFACTURE', 'desc')
             ->get();
@@ -311,15 +327,17 @@ class PrintController extends Controller
         $facture = DB::table('facture_v2 as f')
             ->leftJoin('client as c', 'f.NUM_CLIENT', '=', 'c.NUM_CLIENT')
             ->leftJoin('quartier as q', 'f.ID_QUARTIER', '=', 'q.ID_QUARTIER')
-            ->leftJoin('usage as u', 'c.USED', '=', 'u.ID_USAGE')
-            ->leftJoin('releve as r', 'f.ID_RELEVE', '=', 'r.ID_RELEVE')
-            ->leftJoin('compteur as cpt', 'r.NUM_COMPTEUR', '=', 'cpt.NUM_COMPTEUR')
+            ->leftJoin('typeusage as u', 'c.USED', '=', 'u.ID_USAGE')
+            ->leftJoin('releve as r', 'f.ID_RELEVE', '=', 'r.ID_INDEX')
+            ->leftJoin('compteur as cpt', 'r.ID_COMPTEUR', '=', 'cpt.ID_COMPTEUR')
             ->where('f.NUMERO_FACTURE', $numero_facture)
             ->select('f.*',
                      'c.NOM', 'c.PRENOM', 'c.TELEPHONE', 'c.NUM_CLIENT',
                      'q.NOM as QUARTIER',
-                     'u.NOM as USAGE_NOM', 'u.TARIF',
-                     'r.CONSOMMATION', 'r.ANCIEN_INDEX', 'r.INDEX as NOUVEL_INDEX',
+                     'u.NOM as USAGE_NOM',
+                     'r.ANCIEN_INDEX',
+                     'r.RELEVE as NOUVEL_INDEX',
+                     DB::raw('(r.RELEVE - r.ANCIEN_INDEX) as CONSOMMATION'),
                      'cpt.NUM_COMPTEUR')
             ->first();
 

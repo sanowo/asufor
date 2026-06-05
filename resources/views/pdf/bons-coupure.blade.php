@@ -259,11 +259,11 @@
             <tbody>
                 <tr>
                     <td>Montant Facture</td>
-                    <td class="right-align">{{ number_format($facture->TOTFACTURE, 0, ',', ' ') }}</td>
+                    <td class="right-align">{{ number_format($facture->TOTAL ?? 0, 0, ',', ' ') }}</td>
                 </tr>
                 <tr>
                     <td>Déjà Payé</td>
-                    <td class="right-align" style="color: #388e3c;">-{{ number_format($facture->TOTAL_RECU, 0, ',', ' ') }}</td>
+                    <td class="right-align" style="color: #388e3c;">-{{ number_format($facture->RECU ?? 0, 0, ',', ' ') }}</td>
                 </tr>
                 <tr style="background-color: #ffebee;">
                     <td><strong>Frais de Coupure</strong></td>

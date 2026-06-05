@@ -312,10 +312,10 @@ export default function CaisseIndex({ typeOperations }) {
                                     <td className="px-6 py-4 whitespace-nowrap text-sm">{op.USER_NAME}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm space-x-2">
                                         {op.STATUS === 'ATTENTE' && (
-                                            <>
-                                                <button onClick={() => confirmOperation(op.ID_OPERATION)} className="text-green-600 hover:text-green-900">Confirmer</button>
-                                                <button onClick={() => cancelOperation(op.ID_OPERATION, op.ID_TYPEOPERATION)} className="text-red-600 hover:text-red-900">Annuler</button>
-                                            </>
+                                            <button onClick={() => confirmOperation(op.ID_OPERATION)} className="text-green-600 hover:text-green-900 font-medium">Confirmer</button>
+                                        )}
+                                        {(op.STATUS === 'ATTENTE' || op.STATUS === 'CONFIRM') && (
+                                            <button onClick={() => cancelOperation(op.ID_OPERATION, op.ID_TYPEOPERATION)} className="text-red-600 hover:text-red-900 font-medium">Annuler</button>
                                         )}
                                     </td>
                                 </tr>

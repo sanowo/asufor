@@ -194,43 +194,47 @@ export default function FactureIndex({ quartiers, usages }) {
 
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Total Factures</div>
-                    <div className="text-2xl font-bold text-blue-600">{meta.count}</div>
+                    {loading ? <Spinner size="sm" className="mt-2" /> : <div className="text-2xl font-bold text-blue-600">{meta.count}</div>}
                 </div>
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Montant Total</div>
-                    <div className="text-2xl font-bold text-purple-600">{formatMoney(meta.total)} FCFA</div>
+                    {loading ? <Spinner size="sm" className="mt-2" /> : <div className="text-2xl font-bold text-purple-600">{formatMoney(meta.total)} FCFA</div>}
                 </div>
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Total Reçu</div>
-                    <div className="text-2xl font-bold text-green-600">{formatMoney(meta.total_recu)} FCFA</div>
+                    {loading ? <Spinner size="sm" className="mt-2" /> : <div className="text-2xl font-bold text-green-600">{formatMoney(meta.total_recu)} FCFA</div>}
                 </div>
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500 mb-1">État — écart non reçu</div>
-                    <div className="text-xs text-gray-400 mb-2">Total - Reçu = Impayé + Gracié + Recouvert + Réductions</div>
-                    <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center justify-between">
-                            <span className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-800 font-medium">Impayé ({meta.nb_impaye})</span>
-                            <span className="text-xs font-bold text-red-700">{formatMoney(meta.total_impaye)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">Gracié ({meta.nb_gracie})</span>
-                            <span className="text-xs font-bold text-purple-700">{formatMoney(meta.total_gracie)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                            <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">Recouvert ({meta.nb_recouvrement})</span>
-                            <span className="text-xs font-bold text-yellow-700">{formatMoney(meta.total_recouvrement)}</span>
-                        </div>
-                        {meta.total_reduction > 0 && (
-                            <div className="flex items-center justify-between">
-                                <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 text-green-800 font-medium">Réductions</span>
-                                <span className="text-xs font-bold text-green-700">{formatMoney(meta.total_reduction)}</span>
+                    {loading ? <Spinner size="sm" className="mt-2" /> : (
+                        <>
+                            <div className="text-xs text-gray-400 mb-2">Total - Reçu = Impayé + Gracié + Recouvert + Réductions</div>
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <span className="px-1.5 py-0.5 text-xs rounded bg-red-100 text-red-800 font-medium">Impayé ({meta.nb_impaye})</span>
+                                    <span className="text-xs font-bold text-red-700">{formatMoney(meta.total_impaye)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">Gracié ({meta.nb_gracie})</span>
+                                    <span className="text-xs font-bold text-purple-700">{formatMoney(meta.total_gracie)}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">Recouvert ({meta.nb_recouvrement})</span>
+                                    <span className="text-xs font-bold text-yellow-700">{formatMoney(meta.total_recouvrement)}</span>
+                                </div>
+                                {meta.total_reduction > 0 && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="px-1.5 py-0.5 text-xs rounded bg-green-100 text-green-800 font-medium">Réductions</span>
+                                        <span className="text-xs font-bold text-green-700">{formatMoney(meta.total_reduction)}</span>
+                                    </div>
+                                )}
+                                <div className="border-t pt-1 flex items-center justify-between">
+                                    <span className="text-xs text-gray-500 font-medium">= Écart total</span>
+                                    <span className="text-xs font-bold text-gray-700">{formatMoney(meta.total_impaye + meta.total_gracie + meta.total_recouvrement + meta.total_reduction)}</span>
+                                </div>
                             </div>
-                        )}
-                        <div className="border-t pt-1 flex items-center justify-between">
-                            <span className="text-xs text-gray-500 font-medium">= Écart total</span>
-                            <span className="text-xs font-bold text-gray-700">{formatMoney(meta.total_impaye + meta.total_gracie + meta.total_recouvrement + meta.total_reduction)}</span>
-                        </div>
-                    </div>
+                        </>
+                    )}
                 </div>
             </div>
 

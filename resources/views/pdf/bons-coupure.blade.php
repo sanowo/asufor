@@ -217,7 +217,7 @@
             </div>
             <div class="info-row">
                 <div class="info-label">Date d'émission:</div>
-                <div class="info-value"><span class="date-badge">{{ \Carbon\Carbon::parse($date_bc)->format('d/m/Y') }}</span></div>
+                <div class="info-value"><span class="date-badge">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</span></div>
             </div>
             <div class="info-row">
                 <div class="info-label">N° Client:</div>

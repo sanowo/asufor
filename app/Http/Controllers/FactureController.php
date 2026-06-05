@@ -646,87 +646,89 @@ public function list(Request $request)
      */
     public function getFacturesFromFilters($filters)
     {
-        // Build same query as list() method but return only facture numbers
-        $params = [];
-        $query = "
-            SELECT DISTINCT NUMERO_FACTURE
-            FROM (
-                SELECT NUMERO_FACTURE, NUM_CLIENT, CLIENT, DATEFACTURE, DATEECH, QUARTIER,
-                       TOTAL, TOTAL_RECU, ENCAISSE, IMPAYE, REGLE, BONCOUPURE, REGLEMENT_TYPE
-                FROM (
-                    SELECT f.NUMERO_FACTURE, f.NUM_CLIENT, CONCAT(c.NOM, ' ', c.PRENOM) as CLIENT,
-                           f.DATEFACTURE, f.DATEECH, q.NOM as QUARTIER,
-                           SUM(f.TOTAL) as TOTAL, SUM(f.TOTAL_RECU) as TOTAL_RECU,
-                           SUM(f.ENCAISSE) as ENCAISSE, SUM(f.IMPAYE) as IMPAYE,
-                           MAX(f.REGLE) as REGLE, MAX(f.BONCOUPURE) as BONCOUPURE,
-                           MAX(f.REGLEMENT_TYPE) as REGLEMENT_TYPE
-                    FROM facture_v2 f
-                    LEFT JOIN client c ON f.NUM_CLIENT = c.NUM_CLIENT
-                    LEFT JOIN quartier q ON f.ID_QUARTIER = q.ID_QUARTIER";
+        $whereParts  = [];
+        $whereParams = [];
 
-        // Apply filters
-        $where = [];
         if (!empty($filters['numero'])) {
-            $where[] = "f.NUMERO_FACTURE LIKE ?";
-            $params[] = "%" . $filters['numero'] . "%";
+            $whereParts[]  = 'f.NUMERO_FACTURE LIKE ?';
+            $whereParams[] = '%' . $filters['numero'] . '%';
         }
         if (!empty($filters['client'])) {
-            $where[] = "(c.NUM_CLIENT LIKE ? OR CONCAT(c.NOM, ' ', c.PRENOM) LIKE ?)";
-            $params[] = "%" . $filters['client'] . "%";
-            $params[] = "%" . $filters['client'] . "%";
+            if (is_numeric($filters['client'])) {
+                $whereParts[]  = 'c.NUM_CLIENT = ?';
+                $whereParams[] = $filters['client'];
+            } else {
+                $whereParts[]  = '(c.NOM LIKE ? OR c.PRENOM LIKE ?)';
+                $whereParams[] = '%' . $filters['client'] . '%';
+                $whereParams[] = '%' . $filters['client'] . '%';
+            }
         }
         if (!empty($filters['quartier']) && $filters['quartier'] !== '*') {
-            $where[] = "f.ID_QUARTIER = ?";
-            $params[] = $filters['quartier'];
+            $whereParts[]  = 'c.ID_QUARTIER = ?';
+            $whereParams[] = $filters['quartier'];
         }
         if (!empty($filters['client_usage']) && $filters['client_usage'] !== '*') {
-            $where[] = "c.USED = ?";
-            $params[] = $filters['client_usage'];
+            $whereParts[]  = 'c.USED = ?';
+            $whereParams[] = $filters['client_usage'];
         }
         if (!empty($filters['date_start'])) {
-            $where[] = "f.DATEFACTURE >= ?";
-            $params[] = $filters['date_start'];
+            $whereParts[]  = 'f.DATEFACTURE >= CAST(? AS DATE)';
+            $whereParams[] = $filters['date_start'];
         }
         if (!empty($filters['date_end'])) {
-            $where[] = "f.DATEFACTURE <= ?";
-            $params[] = $filters['date_end'];
+            $whereParts[]  = 'f.DATEFACTURE <= CAST(? AS DATE)';
+            $whereParams[] = $filters['date_end'];
         }
 
-        if (!empty($where)) {
-            $query .= " WHERE " . implode(" AND ", $where);
-        }
+        $whereSQL = count($whereParts) ? 'WHERE ' . implode(' AND ', $whereParts) : '';
 
-        $query .= " GROUP BY f.NUMERO_FACTURE, f.NUM_CLIENT, c.NOM, c.PRENOM, f.DATEFACTURE, f.DATEECH, q.NOM
-                ) as factures_base
-            ) as all_factures";
+        $idsSubQuery = "SELECT f.NUMERO_FACTURE FROM facture_v2 AS f
+                        LEFT JOIN client AS c ON c.ID_CLIENT = f.ID_CLIENT
+                        $whereSQL";
 
-        $allData = DB::select($query, $params);
+        $unionSQL = "
+            SELECT
+                NUMERO_FACTURE,
+                SUM(RECU)               AS TOTAL_RECU,
+                IF(SUM(REGLE) = COUNT(*), 1, 0) AS REGLE,
+                IF(SUM(BONCOUPURE), 1, 0)       AS BONCOUPURE,
+                MAX(REGLEMENT_TYPE)     AS REGLEMENT_TYPE,
+                MAX(DATEECH)            AS DATEECH
+            FROM (
+                SELECT f.NUMERO_FACTURE, f.RECU, f.REGLE, f.BONCOUPURE, f.REGLEMENT_TYPE, f.DATEECH
+                FROM facture_v2 AS f
+                LEFT JOIN client AS c ON c.ID_CLIENT = f.ID_CLIENT
+                $whereSQL
 
-        // Filter by status if specified
+                UNION ALL
+
+                SELECT fp.NUMERO_FACTURE, fp.RECU, fp.REGLE, 0 AS BONCOUPURE, fp.REGLEMENT_TYPE, fp.DATEECH
+                FROM facture_pret AS fp
+                WHERE fp.NUMERO_FACTURE IN ($idsSubQuery)
+            ) AS u
+            GROUP BY NUMERO_FACTURE
+        ";
+
+        // whereParams x2 (branche 1) + whereParams x1 (idsSubQuery branche 2)
+        $allData = DB::select($unionSQL, array_merge($whereParams, $whereParams, $whereParams));
+
+        // Filtre status en PHP (même logique que list())
         if (!empty($filters['status']) && $filters['status'] !== '*') {
-            $allData = array_filter($allData, function($row) use ($filters) {
-                switch($filters['status']) {
-                    case 'retard':
-                        return $row->REGLE == 0 && $row->DATEECH < date('Y-m-d');
-                    case 'recouvrement':
-                        return $row->REGLEMENT_TYPE == 'RECOUVREMENT';
-                    case 'gracier':
-                        return $row->REGLEMENT_TYPE == 'GRACIER';
-                    case '>':
-                        return $row->BONCOUPURE == 1 && $row->REGLE == 1;
-                    case '_':
-                        return $row->REGLE == 0 && $row->TOTAL_RECU > 0;
-                    case '1':
-                        return $row->BONCOUPURE == 0 && $row->REGLE == 1;
-                    case '-':
-                        return $row->REGLE == 0 && $row->TOTAL_RECU == 0;
-                    default:
-                        return true;
+            $allData = array_filter($allData, function ($row) use ($filters) {
+                switch ($filters['status']) {
+                    case 'retard':       return $row->REGLE == 0 && $row->DATEECH < date('Y-m-d');
+                    case 'recouvrement': return $row->REGLEMENT_TYPE === 'RECOUVREMENT';
+                    case 'gracier':      return $row->REGLEMENT_TYPE === 'GRACIER';
+                    case '>':            return $row->BONCOUPURE == 1 && $row->REGLE == 1;
+                    case '_':            return $row->REGLE == 0 && $row->TOTAL_RECU > 0;
+                    case '1':            return $row->BONCOUPURE == 0 && $row->REGLE == 1;
+                    case '-':            return $row->REGLE == 0 && $row->TOTAL_RECU == 0;
+                    default:             return true;
                 }
             });
         }
 
-        return array_column($allData, 'NUMERO_FACTURE');
+        return array_column(array_values($allData), 'NUMERO_FACTURE');
     }
 
     /**

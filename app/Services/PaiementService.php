@@ -49,7 +49,7 @@ class PaiementService
             }
 
             // PHASE 3: PAYER FRAIS DE COUPURE (si applicable et argent restant)
-            if ($pay_frais_coupure && $montant_restant >= 2000) {
+            if ($pay_frais_coupure && $montant_restant > 0) {
                 $result_frais = $this->payDisconnectionFee($numero_facture, $montant_restant);
                 $montant_restant = $result_frais['montant_restant'];
                 $details = array_merge($details, $result_frais['details']);
@@ -220,23 +220,34 @@ class PaiementService
     {
         $details = [];
 
-        if ($montant_restant >= 2000) {
-            $montant_restant -= 2000;
+        // Calculer le vrai montant restant à payer (2000 - déjà encaissé)
+        $frais_encaisse = (int) DB::table('operation_detail')
+            ->where('ID_OP_TARGET', $numero_facture)
+            ->where('ID_TYPEOPERATION', 23)
+            ->sum('MONTANT');
 
-            // Marquer le bon de coupure comme payé dans facture_v2
-            DB::table('facture_v2')
-                ->where('NUMERO_FACTURE', $numero_facture)
-                ->where('BONCOUPURE', 1)
-                ->update([
-                    'BONCOUPURE' => 0, // 0 = payé, 1 = impayé
-                    'DATEBONCOUPURE' => now()
-                ]);
+        $frais_to_pay = max(0, 2000 - $frais_encaisse);
+
+        if ($frais_to_pay > 0 && $montant_restant > 0) {
+            $paying = min($montant_restant, $frais_to_pay);
+            $montant_restant -= $paying;
+
+            // Marquer le bon de coupure comme payé seulement si soldé
+            if ($frais_encaisse + $paying >= 2000) {
+                DB::table('facture_v2')
+                    ->where('NUMERO_FACTURE', $numero_facture)
+                    ->where('BONCOUPURE', 1)
+                    ->update([
+                        'BONCOUPURE' => 0,
+                        'DATEBONCOUPURE' => now()
+                    ]);
+            }
 
             $details[] = [
                 'type' => 'FRAIS_COUPURE',
                 'type_id' => 23,
                 'target' => $numero_facture,
-                'montant' => 2000
+                'montant' => $paying
             ];
         }
 

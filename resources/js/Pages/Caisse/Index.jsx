@@ -398,110 +398,169 @@ export default function CaisseIndex({ typeOperations }) {
                                     )}
                                 </div>
                                 {factureDetails && (
-                                    <div className="mt-2 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded flex items-center gap-1">
-                                        <span>✓</span>
-                                        <span>Facture <strong>{factureSearch}</strong> sélectionnée — {factureDetails.releves?.[0] ? `client chargé` : 'aucun relevé'}</span>
+                                    <div className="mt-2 text-xs text-green-700 bg-green-50 px-3 py-1.5 rounded">
+                                        ✓ Facture <strong>{factureSearch}</strong> chargée
                                     </div>
                                 )}
                                 {errors.facture && <p className="text-red-500 text-sm mt-1">{errors.facture}</p>}
                             </div>
 
-                            {factureDetails && (
+                            {factureDetails && (() => {
+                                // releve (sans s) est le nom retourné par le serveur
+                                const releves = factureDetails.releve || [];
+                                const prets   = factureDetails.prets  || [];
+                                const totalEau    = releves.reduce((s, r) => s + (r.TOTAL  || 0), 0);
+                                const totalPaye   = releves.reduce((s, r) => s + (r.RECU   || 0), 0);
+                                const totalImpaye = releves.reduce((s, r) => s + (r.IMPAYE || 0), 0);
+                                const totalPrets  = paymentForm.pret_include.reduce((s, id) => {
+                                    const p = prets.find(p => p.ID_FACTURE === id);
+                                    return s + (p ? (p.IMPAYE || 0) : 0);
+                                }, 0);
+                                const frais       = paymentForm.pay_frais_coupure ? (factureDetails.frais_to_pay || 0) : 0;
+                                const grandTotal  = totalImpaye + totalPrets + frais;
+                                const monnaie     = Math.max(0, (Number(paymentForm.montant_recu) || 0) - grandTotal);
+                                const restant     = Math.max(0, grandTotal - (Number(paymentForm.montant_recu) || 0));
+
+                                return (
                                 <>
+                                    {/* Client */}
+                                    {factureDetails.client && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm flex gap-6">
+                                            <div><span className="text-gray-500">Client :</span> <strong>{factureDetails.client.NOM} {factureDetails.client.PRENOM}</strong></div>
+                                            <div><span className="text-gray-500">N° :</span> <strong>{factureDetails.client.NUM_CLIENT}</strong></div>
+                                            <div><span className="text-gray-500">Quartier :</span> {factureDetails.client.QUARTIER}</div>
+                                        </div>
+                                    )}
+
+                                    {/* Relevés */}
                                     <div className="border-b pb-4">
-                                        <label className="block text-sm font-medium mb-2">2. Détails de la facture</label>
-                                        <div className="mb-3">
-                                            <h4 className="font-semibold text-sm mb-2 text-green-700">Factures d'eau (priorité 1)</h4>
+                                        <h4 className="font-semibold text-sm mb-2 text-green-700">Relevés d'eau (priorité 1)</h4>
+                                        {releves.length === 0
+                                            ? <p className="text-xs text-gray-400">Aucun relevé</p>
+                                            : (
+                                                <table className="min-w-full text-xs">
+                                                    <thead className="bg-gray-100">
+                                                        <tr>
+                                                            <th className="px-2 py-1 text-left">Date</th>
+                                                            <th className="px-2 py-1 text-left">Compteur</th>
+                                                            <th className="px-2 py-1 text-right">Ancien</th>
+                                                            <th className="px-2 py-1 text-right">Nouveau</th>
+                                                            <th className="px-2 py-1 text-right">Conso (m³)</th>
+                                                            <th className="px-2 py-1 text-right">Montant</th>
+                                                            <th className="px-2 py-1 text-right">Payé</th>
+                                                            <th className="px-2 py-1 text-right">Restant</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {releves.map((r, idx) => (
+                                                            <tr key={idx} className="border-t">
+                                                                <td className="px-2 py-1">{r.DATE_INDEX ? new Date(r.DATE_INDEX).toLocaleDateString('fr-FR') : '—'}</td>
+                                                                <td className="px-2 py-1">{r.NUM_COMPTEUR || '—'}</td>
+                                                                <td className="px-2 py-1 text-right">{formatMoney(r.ANCIEN_INDEX)}</td>
+                                                                <td className="px-2 py-1 text-right">{formatMoney(r.NOUVEAU_INDEX)}</td>
+                                                                <td className="px-2 py-1 text-right font-medium">{formatMoney((r.NOUVEAU_INDEX || 0) - (r.ANCIEN_INDEX || 0))}</td>
+                                                                <td className="px-2 py-1 text-right font-semibold">{formatMoney(r.TOTAL)}</td>
+                                                                <td className="px-2 py-1 text-right text-green-600">{formatMoney(r.RECU)}</td>
+                                                                <td className="px-2 py-1 text-right text-red-600 font-semibold">{formatMoney(r.IMPAYE)}</td>
+                                                            </tr>
+                                                        ))}
+                                                        <tr className="border-t bg-gray-50 font-semibold">
+                                                            <td colSpan="5" className="px-2 py-1 text-right text-xs text-gray-500">Total eau</td>
+                                                            <td className="px-2 py-1 text-right">{formatMoney(totalEau)}</td>
+                                                            <td className="px-2 py-1 text-right text-green-600">{formatMoney(totalPaye)}</td>
+                                                            <td className="px-2 py-1 text-right text-red-600">{formatMoney(totalImpaye)}</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            )
+                                        }
+                                    </div>
+
+                                    {/* Prêts */}
+                                    {prets.length > 0 && (
+                                        <div className="border-b pb-4">
+                                            <h4 className="font-semibold text-sm mb-2 text-blue-700">Prêts ({prets.length}) — priorité 2</h4>
                                             <table className="min-w-full text-xs">
                                                 <thead className="bg-gray-100">
                                                     <tr>
-                                                        <th className="px-2 py-1 text-left">Date</th>
-                                                        <th className="px-2 py-1 text-left">Total</th>
-                                                        <th className="px-2 py-1 text-left">Impayé</th>
+                                                        <th className="px-2 py-1">Inclure</th>
+                                                        <th className="px-2 py-1 text-left">Motif</th>
+                                                        <th className="px-2 py-1 text-right">Total</th>
+                                                        <th className="px-2 py-1 text-right">Payé</th>
+                                                        <th className="px-2 py-1 text-right">Restant</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {factureDetails.releves?.map((r, idx) => (
+                                                    {prets.map((p, idx) => (
                                                         <tr key={idx} className="border-t">
-                                                            <td className="px-2 py-1">{new Date(r.DATE_INDEX).toLocaleDateString('fr-FR')}</td>
-                                                            <td className="px-2 py-1">{formatMoney(r.TOTAL)} FCFA</td>
-                                                            <td className="px-2 py-1 text-red-600 font-semibold">{formatMoney(r.IMPAYE)} FCFA</td>
+                                                            <td className="px-2 py-1 text-center">
+                                                                <input type="checkbox" checked={paymentForm.pret_include.includes(p.ID_FACTURE)} onChange={() => togglePret(p.ID_FACTURE)} />
+                                                            </td>
+                                                            <td className="px-2 py-1">{p.MOTIF || p.TYPE_PRET || '—'}</td>
+                                                            <td className="px-2 py-1 text-right">{formatMoney(p.TOTAL)}</td>
+                                                            <td className="px-2 py-1 text-right text-green-600">{formatMoney(p.RECU)}</td>
+                                                            <td className="px-2 py-1 text-right text-red-600 font-semibold">{formatMoney(p.IMPAYE)}</td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
+                                    )}
 
-                                        {factureDetails.prets?.length > 0 && (
-                                            <div className="mb-3">
-                                                <h4 className="font-semibold text-sm mb-2 text-blue-700">Prêts (priorité 2)</h4>
-                                                <table className="min-w-full text-xs">
-                                                    <thead className="bg-gray-100">
-                                                        <tr>
-                                                            <th className="px-2 py-1 text-left">Inclure</th>
-                                                            <th className="px-2 py-1 text-left">Type</th>
-                                                            <th className="px-2 py-1 text-left">Total</th>
-                                                            <th className="px-2 py-1 text-left">Impayé</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {factureDetails.prets.map((p, idx) => (
-                                                            <tr key={idx} className="border-t">
-                                                                <td className="px-2 py-1">
-                                                                    <input type="checkbox" checked={paymentForm.pret_include.includes(p.ID_FACTURE)} onChange={() => togglePret(p.ID_FACTURE)} />
-                                                                </td>
-                                                                <td className="px-2 py-1">{p.TYPE_PRET}</td>
-                                                                <td className="px-2 py-1">{formatMoney(p.TOTAL)} FCFA</td>
-                                                                <td className="px-2 py-1 text-red-600 font-semibold">{formatMoney(p.IMPAYE)} FCFA</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
+                                    {/* Frais de coupure */}
+                                    {factureDetails.frais_to_pay > 0 && (
+                                        <div className="border-b pb-3">
+                                            <h4 className="font-semibold text-sm mb-2 text-orange-700">Frais de coupure — priorité 3</h4>
+                                            <label className="flex items-center gap-2 text-sm cursor-pointer">
+                                                <input type="checkbox" checked={paymentForm.pay_frais_coupure}
+                                                    onChange={(e) => setPaymentForm({ ...paymentForm, pay_frais_coupure: e.target.checked })} />
+                                                <span>Inclure frais de coupure :</span>
+                                                <span className="font-bold text-orange-600">{formatMoney(factureDetails.frais_to_pay)} FCFA</span>
+                                                {factureDetails.frais_encaisse > 0 && (
+                                                    <span className="text-xs text-gray-400">(déjà payé : {formatMoney(factureDetails.frais_encaisse)} / 2 000)</span>
+                                                )}
+                                            </label>
+                                        </div>
+                                    )}
+
+                                    {/* Récapitulatif + saisie */}
+                                    <div className="bg-gray-50 rounded p-3 space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Total à régler</span>
+                                            <span className="font-bold">{formatMoney(grandTotal)} FCFA</span>
+                                        </div>
+                                        <div className="border-t pt-2">
+                                            <label className="block text-sm font-medium mb-1">Montant reçu</label>
+                                            <input type="number" className="w-full border rounded px-3 py-2 text-lg font-semibold" placeholder="0"
+                                                value={paymentForm.montant_recu}
+                                                onChange={(e) => setPaymentForm({ ...paymentForm, montant_recu: e.target.value })}
+                                                required min="0" />
+                                            {errors.montant_recu && <p className="text-red-500 text-sm mt-1">{errors.montant_recu}</p>}
+                                        </div>
+                                        {paymentForm.montant_recu > 0 && (
+                                            <div className="grid grid-cols-2 gap-3 pt-1">
+                                                <div className="bg-green-50 rounded p-2 text-center">
+                                                    <div className="text-xs text-gray-500">Monnaie à rendre</div>
+                                                    <div className="font-bold text-green-700">{formatMoney(monnaie)} FCFA</div>
+                                                </div>
+                                                <div className="bg-red-50 rounded p-2 text-center">
+                                                    <div className="text-xs text-gray-500">Montant restant (arriéré)</div>
+                                                    <div className="font-bold text-red-700">{formatMoney(restant)} FCFA</div>
+                                                </div>
                                             </div>
                                         )}
-
-                                        {factureDetails.frais_to_pay > 0 && (
-                                            <div className="mb-3">
-                                                <h4 className="font-semibold text-sm mb-2 text-orange-700">Frais de coupure (priorité 3)</h4>
-                                                <label className="flex items-center gap-2">
-                                                    <input type="checkbox" checked={paymentForm.pay_frais_coupure}
-                                                        onChange={(e) => setPaymentForm({ ...paymentForm, pay_frais_coupure: e.target.checked })} />
-                                                    <span className="text-sm">Payer les frais de coupure:
-                                                        <span className="font-bold text-orange-600 ml-2">{formatMoney(factureDetails.frais_to_pay)} FCFA</span>
-                                                    </span>
-                                                </label>
-                                            </div>
-                                        )}
-
-                                        <div className="bg-blue-50 p-3 rounded">
-                                            <div className="grid grid-cols-2 gap-2 text-sm">
-                                                <div><span className="font-semibold">Total à payer:</span><span className="ml-2">{formatMoney(totals.total)} FCFA</span></div>
-                                                <div><span className="font-semibold text-red-600">Impayé total:</span><span className="ml-2 text-red-600 font-bold">{formatMoney(totals.impaye)} FCFA</span></div>
-                                            </div>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1">Date de paiement</label>
+                                            <input type="date" className="w-full border rounded px-3 py-2"
+                                                value={paymentForm.date_operation}
+                                                onChange={(e) => setPaymentForm({ ...paymentForm, date_operation: e.target.value })} required />
                                         </div>
                                     </div>
-
-                                    <div className="border-b pb-4">
-                                        <label className="block text-sm font-medium mb-2">3. Montant reçu</label>
-                                        <input type="number" className="w-full border rounded px-3 py-2" placeholder="Montant en FCFA"
-                                            value={paymentForm.montant_recu} onChange={(e) => setPaymentForm({ ...paymentForm, montant_recu: e.target.value })} required min="0" />
-                                        {errors.montant_recu && <p className="text-red-500 text-sm mt-1">{errors.montant_recu}</p>}
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">4. Date de l'opération</label>
-                                        <input type="date" className="w-full border rounded px-3 py-2"
-                                            value={paymentForm.date_operation} onChange={(e) => setPaymentForm({ ...paymentForm, date_operation: e.target.value })} required />
-                                    </div>
                                 </>
-                            )}
+                                );
+                            })()}
 
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
-
-                            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded text-sm">
-                                <p className="font-semibold mb-1">Algorithme Waterfall</p>
-                                <p className="text-xs text-gray-600">Le montant sera réparti dans l'ordre: 1) Factures d'eau, 2) Prêts sélectionnés, 3) Frais de coupure</p>
-                            </div>
 
                             <div className="flex justify-end gap-2 pt-4">
                                 <button type="button" onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>

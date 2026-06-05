@@ -85,8 +85,8 @@ class DashboardController extends Controller
             GROUP BY NUMERO_FACTURE
         ";
 
-        // params : whereSQL (branche 1) + whereSQL (idsSubQuery pour branche 2)
-        $unionParams = array_merge($params, $params, $params);
+        // 4 ? au total : branche 1 (2) + idsSubQuery dans branche 2 (2)
+        $unionParams = array_merge($params, $params);
 
         $factureStats = DB::selectOne("
             SELECT

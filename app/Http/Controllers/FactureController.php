@@ -207,8 +207,8 @@ public function list(Request $request)
         $whereParams = [];
 
         if ($request->filled('numero')) {
-            $whereParts[]  = 'f.NUMERO_FACTURE = ?';
-            $whereParams[] = $request->numero;
+            $whereParts[]  = 'f.NUMERO_FACTURE LIKE ?';
+            $whereParams[] = '%' . $request->numero . '%';
         }
 
         if ($request->filled('client')) {

@@ -7,7 +7,7 @@ import Spinner from '../../Components/Spinner';
 
 export default function FactureIndex({ quartiers, usages }) {
     const [factures, setFactures] = useState([]);
-    const [meta, setMeta] = useState({ total: 0, total_recu: 0, encaisse: 0, count: 0 });
+    const [meta, setMeta] = useState({ total: 0, total_recu: 0, total_gracie: 0, total_recouvrement: 0, nb_gracie: 0, nb_recouvrement: 0, count: 0 });
     const [loading, setLoading] = useState(false);
     const [expandedRows, setExpandedRows] = useState({});
     const [selectedFactures, setSelectedFactures] = useState([]);
@@ -225,8 +225,17 @@ export default function FactureIndex({ quartiers, usages }) {
                     <div className="text-2xl font-bold text-green-600">{formatMoney(meta.total_recu)} FCFA</div>
                 </div>
                 <div className="bg-white p-4 rounded shadow">
-                    <div className="text-sm text-gray-500">Encaissé</div>
-                    <div className="text-2xl font-bold text-orange-600">{formatMoney(meta.encaisse)} FCFA</div>
+                    <div className="text-sm text-gray-500 mb-2">État</div>
+                    <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between">
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-purple-100 text-purple-800 font-medium">Gracié ({meta.nb_gracie})</span>
+                            <span className="text-sm font-bold text-purple-700">{formatMoney(meta.total_gracie)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="px-1.5 py-0.5 text-xs rounded bg-yellow-100 text-yellow-800 font-medium">Recouvert ({meta.nb_recouvrement})</span>
+                            <span className="text-sm font-bold text-yellow-700">{formatMoney(meta.total_recouvrement)}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -414,7 +423,6 @@ export default function FactureIndex({ quartiers, usages }) {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quartier</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reçu</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Encaissé</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                             </tr>
@@ -422,13 +430,13 @@ export default function FactureIndex({ quartiers, usages }) {
                         <tbody className="bg-white divide-y divide-gray-200">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="10" className="px-6 py-4 text-center text-gray-500">
+                                    <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
                                         Chargement...
                                     </td>
                                 </tr>
                             ) : factures.length === 0 ? (
                                 <tr>
-                                    <td colSpan="10" className="px-6 py-4 text-center text-gray-500">
+                                    <td colSpan="9" className="px-6 py-4 text-center text-gray-500">
                                         Aucune facture trouvée
                                     </td>
                                 </tr>
@@ -463,9 +471,6 @@ export default function FactureIndex({ quartiers, usages }) {
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-green-600">
                                                 {formatMoney(facture.TOTAL_RECU)} FCFA
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-orange-600">
-                                                {formatMoney(facture.ENCAISSE)} FCFA
-                                            </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm">
                                                 {getStatusBadge(facture)}
                                                 {facture.ATTENTE > 0 && (
@@ -485,7 +490,7 @@ export default function FactureIndex({ quartiers, usages }) {
                                         </tr>
                                         {expandedRows[facture.NUMERO_FACTURE] && facture.META && (
                                             <tr>
-                                                <td colSpan="10" className="px-6 py-4 bg-gray-50">
+                                                <td colSpan="9" className="px-6 py-4 bg-gray-50">
                                                     <div className="space-y-4">
                                                         {/* Relevés */}
                                                         {facture.META.releves && facture.META.releves.length > 0 && (

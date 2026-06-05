@@ -406,17 +406,27 @@ public function list(Request $request)
 
         // ⚠️ Note : on ré-encapsule $mainQuery dans metaQuery, donc on double les params
         $metaResult = DB::selectOne(
-            "SELECT COUNT(*) AS cnt, SUM(TOTAL) AS total, SUM(TOTAL_RECU) AS total_recu, SUM(ENCAISSE) AS encaisse
+            "SELECT
+                COUNT(*) AS cnt,
+                SUM(TOTAL) AS total,
+                SUM(TOTAL_RECU) AS total_recu,
+                SUM(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN TOTAL ELSE 0 END) AS total_gracie,
+                SUM(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN TOTAL ELSE 0 END) AS total_recouvrement,
+                COUNT(CASE WHEN REGLEMENT_TYPE = 'GRACIER' THEN 1 END) AS nb_gracie,
+                COUNT(CASE WHEN REGLEMENT_TYPE = 'RECOUVREMENT' THEN 1 END) AS nb_recouvrement
              FROM ($mainQuery) AS agg",
             $mainParams
         );
 
         $meta = [
-            'count'       => (int)   ($metaResult->cnt       ?? 0),
-            'total'       => (float) ($metaResult->total      ?? 0),
-            'total_recu'  => (float) ($metaResult->total_recu ?? 0),
-            'encaisse'    => (float) ($metaResult->encaisse   ?? 0),
-            'periode'     => [
+            'count'            => (int)   ($metaResult->cnt              ?? 0),
+            'total'            => (float) ($metaResult->total             ?? 0),
+            'total_recu'       => (float) ($metaResult->total_recu        ?? 0),
+            'total_gracie'     => (float) ($metaResult->total_gracie      ?? 0),
+            'total_recouvrement' => (float) ($metaResult->total_recouvrement ?? 0),
+            'nb_gracie'        => (int)   ($metaResult->nb_gracie         ?? 0),
+            'nb_recouvrement'  => (int)   ($metaResult->nb_recouvrement   ?? 0),
+            'periode'          => [
                 'date_start' => $dateStart,
                 'date_end'   => $dateEnd,
                 'is_default' => !$request->filled('date_start') && !$request->filled('date_end'),

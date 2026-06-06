@@ -8,12 +8,16 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class PrintController extends Controller
 {
+    // Nombre max de ressources par PDF avant de basculer en ZIP
+    private const CHUNK_SIZE = 200;
+
     // ─────────────────────────────────────────────
     //  FACTURES (A4 portrait, coupon + ciseaux)
     // ─────────────────────────────────────────────
     public function printFactures(Request $request)
     {
-        set_time_limit(120);
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
 
         $useFilters = $request->input('use_filters', false);
 
@@ -40,12 +44,18 @@ class PrintController extends Controller
             return response()->json(['error' => 'Aucune facture trouvée'], 404);
         }
 
-        $pdf = PDF::loadView('pdf.factures', [
-            'factures'   => $factures,
-            'parametres' => $this->getParametres(),
-        ])->setPaper('a4', 'portrait');
+        $parametres = $this->getParametres();
+        $chunks     = array_chunk($factures, self::CHUNK_SIZE);
+        $basename   = 'factures_' . date('Y-m-d');
 
-        return $pdf->stream('factures_' . date('Y-m-d') . '.pdf');
+        $generators = array_map(fn($chunk) => fn() =>
+            PDF::loadView('pdf.factures', [
+                'factures'   => $chunk,
+                'parametres' => $parametres,
+            ])->setPaper('a4', 'portrait'),
+        $chunks);
+
+        return $this->streamOrZip($generators, $basename, 'portrait');
     }
 
     // ─────────────────────────────────────────────
@@ -53,7 +63,8 @@ class PrintController extends Controller
     // ─────────────────────────────────────────────
     public function printBonsCoupure(Request $request)
     {
-        set_time_limit(120);
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
 
         $useFilters = $request->input('use_filters', false);
 
@@ -93,14 +104,20 @@ class PrintController extends Controller
             $facture->prets    = $this->getPretsActifs($facture->NUM_CLIENT);
             $facture->arrieres = $this->getArrieres($facture->NUM_CLIENT, $facture->NUMERO_FACTURE);
             return $facture;
-        });
+        })->values()->all();
 
-        $pdf = PDF::loadView('pdf.bons-coupure', [
-            'factures'   => $factures,
-            'parametres' => $this->getParametres(),
-        ])->setPaper('a4', 'portrait');
+        $parametres = $this->getParametres();
+        $chunks     = array_chunk($factures, self::CHUNK_SIZE);
+        $basename   = 'bons_coupure_' . date('Y-m-d');
 
-        return $pdf->stream('bons_coupure_' . date('Y-m-d') . '.pdf');
+        $generators = array_map(fn($chunk) => fn() =>
+            PDF::loadView('pdf.bons-coupure', [
+                'factures'   => $chunk,
+                'parametres' => $parametres,
+            ])->setPaper('a4', 'portrait'),
+        $chunks);
+
+        return $this->streamOrZip($generators, $basename, 'portrait');
     }
 
     // ─────────────────────────────────────────────
@@ -108,7 +125,8 @@ class PrintController extends Controller
     // ─────────────────────────────────────────────
     public function printFicheReleve(Request $request)
     {
-        set_time_limit(120);
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
 
         $validated = $request->validate([
             'quartier'     => 'required',
@@ -177,15 +195,24 @@ class PrintController extends Controller
             $quartier = DB::table('quartier')->where('ID_QUARTIER', $validated['quartier'])->first();
         }
 
-        $pdf = PDF::loadView('pdf.fiche-releve', [
-            'clients'    => $clients,
-            'parametres' => $this->getParametres(),
-            'quartier'   => $quartier,
-            'date_start' => $dateStart,
-            'date_end'   => $dateEnd,
-        ])->setPaper('a4', 'landscape');
+        $parametres = $this->getParametres();
+        $basename   = 'fiche_releve_' . date('Y-m-d');
 
-        return $pdf->stream('fiche_releve_' . date('Y-m-d') . '.pdf');
+        // La vue gère déjà la pagination interne par groupe de 25 lignes,
+        // mais on chunke quand même les clients pour éviter les timeouts sur >200
+        $chunks = $clients->chunk(self::CHUNK_SIZE);
+
+        $generators = $chunks->map(fn($chunk) => fn() =>
+            PDF::loadView('pdf.fiche-releve', [
+                'clients'    => $chunk->values(),
+                'parametres' => $parametres,
+                'quartier'   => $quartier,
+                'date_start' => $dateStart,
+                'date_end'   => $dateEnd,
+            ])->setPaper('a4', 'landscape')
+        )->all();
+
+        return $this->streamOrZip($generators, $basename, 'landscape');
     }
 
     // ─────────────────────────────────────────────
@@ -561,8 +588,9 @@ class PrintController extends Controller
             return response()->json(['error' => 'Aucun enregistrement trouvé'], 404);
         }
 
-        $pdf = PDF::loadView('pdf.print-list', [
-            'items'        => $items,
+        $parametres = $this->getParametres();
+        $basename   = 'liste_' . $target . '_' . date('Y-m-d');
+        $viewData   = [
             'target'       => $target,
             'title'        => $title,
             'facture_type' => $factureType,
@@ -572,10 +600,18 @@ class PrintController extends Controller
             'type_label'   => $typeLabel,
             'date_start'   => $dateStart,
             'date_end'     => $dateEnd,
-            'parametres'   => $this->getParametres(),
-        ])->setPaper('a4', 'landscape');
+            'parametres'   => $parametres,
+        ];
 
-        return $pdf->stream('liste_' . $target . '_' . date('Y-m-d') . '.pdf');
+        $chunks = $items->chunk(self::CHUNK_SIZE);
+
+        $generators = $chunks->map(fn($chunk) => fn() =>
+            PDF::loadView('pdf.print-list', array_merge($viewData, [
+                'items' => $chunk->values(),
+            ]))->setPaper('a4', 'landscape')
+        )->all();
+
+        return $this->streamOrZip($generators, $basename, 'landscape');
     }
 
     // ─────────────────────────────────────────────
@@ -671,7 +707,8 @@ class PrintController extends Controller
     // ─────────────────────────────────────────────
     public function printFacturesList(Request $request)
     {
-        set_time_limit(120);
+        set_time_limit(0);
+        ini_set('memory_limit', '512M');
 
         $useFilters = $request->input('use_filters', false);
 
@@ -706,23 +743,79 @@ class PrintController extends Controller
             return response()->json(['error' => 'Aucune facture trouvée'], 404);
         }
 
-        $total    = $factures->sum('MONTANT_TOTAL');
-        $restant  = $factures->sum('RESTANT');
+        $total      = $factures->sum('MONTANT_TOTAL');
+        $restant    = $factures->sum('RESTANT');
+        $parametres = $this->getParametres();
+        $basename   = 'liste_factures_' . date('Y-m-d');
 
-        $pdf = PDF::loadView('pdf.factures-list', [
-            'factures'   => $factures,
-            'parametres' => $this->getParametres(),
-            'total'      => $total,
-            'encaisse'   => $total - $restant,
-            'restant'    => $restant,
-        ])->setPaper('a4', 'landscape');
+        $chunks = $factures->chunk(self::CHUNK_SIZE);
 
-        return $pdf->stream('liste_factures_' . date('Y-m-d') . '.pdf');
+        $generators = $chunks->map(fn($chunk) => fn() =>
+            PDF::loadView('pdf.factures-list', [
+                'factures'   => $chunk->values(),
+                'parametres' => $parametres,
+                'total'      => $total,
+                'encaisse'   => $total - $restant,
+                'restant'    => $restant,
+            ])->setPaper('a4', 'landscape')
+        )->all();
+
+        return $this->streamOrZip($generators, $basename, 'landscape');
     }
 
     // ═════════════════════════════════════════════
     //  HELPERS PRIVÉS
     // ═════════════════════════════════════════════
+
+    /**
+     * Si un seul chunk → stream le PDF directement.
+     * Si plusieurs chunks → génère un PDF par chunk, les zippe, retourne le ZIP.
+     *
+     * @param  array<int, callable(): \Barryvdh\DomPDF\PDF>  $generators
+     */
+    private function streamOrZip(array $generators, string $basename, string $orientation): \Symfony\Component\HttpFoundation\Response
+    {
+        // Cas simple : un seul chunk → PDF direct
+        if (count($generators) === 1) {
+            return ($generators[0])()->stream($basename . '.pdf');
+        }
+
+        // Plusieurs chunks → ZIP
+        $tmpDir  = sys_get_temp_dir();
+        $zipPath = $tmpDir . DIRECTORY_SEPARATOR . $basename . '_' . uniqid() . '.zip';
+        $tmpFiles = [];
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return response()->json(['error' => 'Impossible de créer l\'archive ZIP'], 500);
+        }
+
+        foreach ($generators as $i => $generator) {
+            $pdf      = $generator();
+            $tmpPath  = $tmpDir . DIRECTORY_SEPARATOR . $basename . '_lot' . ($i + 1) . '_' . uniqid() . '.pdf';
+            file_put_contents($tmpPath, $pdf->output());
+            $zip->addFile($tmpPath, $basename . '_lot' . ($i + 1) . '.pdf');
+            $tmpFiles[] = $tmpPath;
+            // Libérer la mémoire du PDF rendu
+            unset($pdf);
+        }
+
+        $zip->close();
+
+        // Nettoyer les PDFs temporaires
+        foreach ($tmpFiles as $f) {
+            @unlink($f);
+        }
+
+        $zipContent = file_get_contents($zipPath);
+        @unlink($zipPath);
+
+        return response($zipContent, 200, [
+            'Content-Type'        => 'application/zip',
+            'Content-Disposition' => 'attachment; filename="' . $basename . '.zip"',
+            'Content-Length'      => strlen($zipContent),
+        ]);
+    }
 
     private function getFactureData(string $numero): ?array
     {

@@ -794,11 +794,22 @@ class PrintController extends Controller
             ->where('NUM_CLIENT', $numClient)
             ->where('ACTIF', 1)
             ->where('IMPAYER', '>', 0)
-            ->select('ID_PRET', 'DATE_PRET', 'MONTANT_PRET', 'MONTANT_TRANCHE', 'PAYER', 'IMPAYER',
-                     DB::raw('1 as PRET_ACTIF'),
-                     DB::raw('MONTANT_PRET as PRET_MONTANT'),
-                     DB::raw('IMPAYER as PRET_IMPAYE'),
-                     DB::raw('DATE_PRET as PRET_DATE'))
+            ->select(
+                'ID_PRET',
+                'DATE',
+                'MONTANT',
+                'MENSUALITE',
+                'TRANCHE',
+                'PAYER',
+                'IMPAYER',
+                DB::raw('1         as PRET_ACTIF'),
+                DB::raw('DATE      as DATE_PRET'),
+                DB::raw('MONTANT   as MONTANT_PRET'),
+                DB::raw('MENSUALITE as MONTANT_TRANCHE'),
+                DB::raw('MONTANT   as PRET_MONTANT'),
+                DB::raw('IMPAYER   as PRET_IMPAYE'),
+                DB::raw('DATE      as PRET_DATE')
+            )
             ->get();
     }
 

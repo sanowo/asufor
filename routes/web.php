@@ -128,10 +128,20 @@ Route::prefix('parametres')->group(function () {
 
 // Routes Impression PDF
 Route::prefix('print')->group(function () {
-    Route::post('/factures', [\App\Http\Controllers\PrintController::class, 'printFactures'])->name('print.factures');
-    Route::post('/bons-coupure', [\App\Http\Controllers\PrintController::class, 'printBonsCoupure'])->name('print.bons');
-    Route::post('/fiche-releve', [\App\Http\Controllers\PrintController::class, 'printFicheReleve'])->name('print.releve');
-    Route::post('/operations', [\App\Http\Controllers\PrintController::class, 'printOperations'])->name('print.operations');
+    // Factures individuelles A4 (coupon + ciseaux + arriérés + prêts)
+    Route::post('/factures',          [\App\Http\Controllers\PrintController::class, 'printFactures'])->name('print.factures');
+    // Bons de coupure A4 (frais 2000 FCFA + REMISE 48H)
+    Route::post('/bons-coupure',      [\App\Http\Controllers\PrintController::class, 'printBonsCoupure'])->name('print.bons');
+    // Fiche de relevé A4 paysage (tableau agents de terrain)
+    Route::post('/fiche-releve',      [\App\Http\Controllers\PrintController::class, 'printFicheReleve'])->name('print.releve');
+    // Ticket thermique 62mm (règlement facture ou opération caisse)
+    Route::get('/ticket',             [\App\Http\Controllers\PrintController::class, 'printTicket'])->name('print.ticket');
+    // Liste générique paysage (clients / factures / relevés / prêts / opérations)
+    Route::post('/list',              [\App\Http\Controllers\PrintController::class, 'printList'])->name('print.list');
+    // Journal de caisse A4 portrait
+    Route::post('/operations',        [\App\Http\Controllers\PrintController::class, 'printOperations'])->name('print.operations');
+    // Clients suspendus A4 portrait
     Route::post('/clients-suspendus', [\App\Http\Controllers\PrintController::class, 'printClientsSuspendus'])->name('print.suspendus');
-    Route::post('/factures-list', [\App\Http\Controllers\PrintController::class, 'printFacturesList'])->name('print.factures.list');
+    // Tableau récapitulatif factures A4 paysage
+    Route::post('/factures-list',     [\App\Http\Controllers\PrintController::class, 'printFacturesList'])->name('print.factures.list');
 });

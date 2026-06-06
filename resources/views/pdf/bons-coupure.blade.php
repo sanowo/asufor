@@ -4,312 +4,346 @@
     <meta charset="utf-8">
     <title>Bons de Coupure</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: Arial, Helvetica, sans-serif;
-            font-size: 11px;
-            color: #333;
+            font-size: 13px;
+            color: #000;
+            background: #fff;
         }
 
         .page {
-            width: 100%;
+            width: 19cm;
+            min-height: 27.7cm;
             padding: 1cm;
             page-break-after: always;
+            position: relative;
         }
 
         .page:last-child {
             page-break-after: avoid;
         }
 
-        header {
-            border-bottom: 3px solid #d32f2f;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+        /* ── HEADER ── */
+        .page-header {
+            display: table;
+            width: 100%;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 8px;
+            margin-bottom: 16px;
         }
+        .page-header-logo { display: table-cell; width: 160px; vertical-align: middle; }
+        .page-header-info { display: table-cell; vertical-align: middle; font-size: 12px; }
+        .page-header-info .company-name { font-weight: bold; font-size: 15px; }
+        .page-header-meta { display: table-cell; width: 180px; text-align: right; vertical-align: middle; font-size: 12px; }
 
-        .company-info {
-            text-align: center;
-        }
-
-        .company-name {
-            font-size: 16px;
-            font-weight: bold;
+        /* ── TITRE BON DE COUPURE ── */
+        .bc-title {
+            font-family: 'Courier New', Courier, monospace;
+            text-decoration: underline;
             text-transform: uppercase;
-        }
-
-        .document-title {
             text-align: center;
             font-size: 22px;
             font-weight: bold;
-            color: #d32f2f;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #ffebee;
-            border: 2px solid #d32f2f;
+            margin: 20px 0 16px;
         }
 
-        .notice-box {
-            background-color: #fff3cd;
-            border: 2px solid #ff9800;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 5px;
-        }
-
-        .notice-title {
-            font-size: 14px;
-            font-weight: bold;
-            color: #f57c00;
-            margin-bottom: 10px;
-        }
-
-        .info-grid {
+        /* ── FIELDSETS ── */
+        .meta-row {
             display: table;
             width: 100%;
-            margin: 20px 0;
+            margin-bottom: 16px;
         }
+        .meta-cell { display: table-cell; vertical-align: top; }
+        .meta-cell:first-child { width: 55%; padding-right: 10px; }
 
-        .info-row {
-            display: table-row;
+        fieldset {
+            border: 1px solid #aaa;
+            padding: 6px 10px;
+            font-size: 12px;
+            line-height: 1.7;
         }
+        fieldset legend { font-weight: bold; padding: 0 4px; font-size: 11px; }
 
-        .info-label {
-            display: table-cell;
-            padding: 8px 0;
-            font-weight: bold;
-            width: 180px;
-        }
-
-        .info-value {
-            display: table-cell;
-            padding: 8px 0;
-        }
-
+        /* ── TABLES ── */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
+            font-size: 12px;
+            margin-bottom: 6px;
         }
+        table.main-table { width: 90%; margin: 0 auto 0 0; }
+        table.sub-table  { width: 80%; }
 
-        th {
-            background-color: #d32f2f;
+        thead tr th {
+            background-color: #005CB1;
             color: #fff;
-            padding: 10px;
-            text-align: left;
+            padding: 5px 6px;
+            text-align: center;
             font-weight: normal;
+            border: 1px solid #000;
+            -webkit-print-color-adjust: exact;
         }
-
-        td {
-            padding: 10px;
-            border-bottom: 1px solid #ddd;
-        }
-
-        .right-align {
-            text-align: right;
-        }
-
-        .amount-box {
-            font-size: 16px;
-            font-weight: bold;
-            padding: 15px;
-            margin: 20px 0;
-            background-color: #ffebee;
-            border: 2px solid #d32f2f;
+        tbody tr td {
+            border: 1px solid #CFD1D2;
+            padding: 3px 6px;
             text-align: center;
-            color: #d32f2f;
+            color: #333;
         }
 
-        .warning-section {
-            margin-top: 30px;
-            padding: 15px;
-            background-color: #fff9c4;
-            border-left: 4px solid #fbc02d;
+        .section-title {
+            font-family: 'Courier New', Courier, monospace;
+            text-decoration: underline;
+            margin: 14px 0 6px;
+            font-size: 12px;
         }
 
-        .warning-title {
+        /* ── TOTAL BANNER ── */
+        .total-banner {
+            border-top: 4px dashed #000;
+            border-bottom: 4px dashed #000;
+            width: 80%;
+            margin: 20px auto 0;
+        }
+        .total-banner p {
+            background-color: #005CB1;
+            color: #fff;
+            padding: 6px 8px;
+            text-transform: uppercase;
+            font-weight: bold;
             font-size: 13px;
+            margin: 0;
+            -webkit-print-color-adjust: exact;
+        }
+
+        /* ── COUPON ── */
+        .coupon-divider {
+            border-top: 3px dashed #000;
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 3cm;
+            padding: 14px 1cm 0;
+        }
+        .coupon-divider .scissors {
+            position: absolute;
+            top: -12px;
+            left: 0.8cm;
+            font-size: 20px;
+            background: #fff;
+            padding-right: 4px;
+            line-height: 1;
+        }
+        .coupon-title {
+            background-color: #005CB1;
+            color: #fff;
+            text-transform: uppercase;
             font-weight: bold;
-            color: #f57f17;
-            margin-bottom: 10px;
-        }
-
-        .warning-text {
-            font-size: 11px;
-            line-height: 1.6;
-        }
-
-        footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 2px solid #d32f2f;
-        }
-
-        .signature-area {
-            margin-top: 40px;
-            display: table;
-            width: 100%;
-        }
-
-        .signature-block {
-            display: table-cell;
-            width: 50%;
+            font-size: 15px;
             text-align: center;
+            padding: 6px 10px;
+            width: 50%;
+            margin: 0 auto 14px;
+            border: 2px outset #005CB1;
+            -webkit-print-color-adjust: exact;
         }
-
-        .signature-line {
-            margin-top: 50px;
-            border-top: 1px solid #000;
-            display: inline-block;
-            width: 200px;
+        .coupon-grid {
+            display: table;
+            width: 80%;
+            margin: 0 auto;
         }
-
-        .watermark {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 100px;
-            color: rgba(211, 47, 47, 0.08);
-            font-weight: bold;
-            z-index: -1;
-        }
-
-        .date-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            background-color: #d32f2f;
-            color: white;
-            border-radius: 3px;
-            font-weight: bold;
-        }
+        .coupon-col { display: table-cell; width: 50%; font-size: 12px; line-height: 1.8; }
     </style>
 </head>
 <body>
-    @foreach($factures as $facture)
-    <div class="page">
-        <div class="watermark">COUPURE</div>
 
-        <header>
-            <div class="company-info">
-                <div class="company-name">{{ $parametres['entreprise'] }}</div>
-                <div>{{ $parametres['adresse'] }} | Tél: {{ $parametres['telephone'] }}</div>
-            </div>
-        </header>
+@foreach($factures as $facture)
+@php
+    $isBF = ($facture->USAGE_NOM ?? '') === 'BF';
+    $impaye   = intval($facture->IMPAYE ?? 0);
+    $frais    = 2000;
+    $total    = $impaye + $frais;
 
-        <div class="document-title">
-            ⚠️ AVIS DE COUPURE D'EAU ⚠️
+    // Prêts actifs
+    $prets    = $facture->prets    ?? [];
+    $arrieres = $facture->arrieres ?? [];
+
+    $pretTotal = 0;
+    foreach ($prets as $p) {
+        if (!empty($p->ACTIF) || !empty($p->PRET_ACTIF)) {
+            $pretTotal += intval($p->IMPAYER ?? $p->IMPAYE ?? 0);
+        }
+    }
+    $total += $pretTotal;
+
+    $arrTotal = 0;
+    foreach ($arrieres as $arr) {
+        $cur = intval($arr->IMPAYE ?? 0);
+        if ($cur > 0) { $arrTotal += $cur; }
+    }
+    $total += $arrTotal;
+@endphp
+
+<div class="page">
+
+    {{-- HEADER --}}
+    <div class="page-header">
+        <div class="page-header-logo">
+            <strong style="font-size:18px; color:#005CB1;">ASUFOR</strong>
         </div>
-
-        <div class="notice-box">
-            <div class="notice-title">⚠️ AVERTISSEMENT IMPORTANT</div>
-            <p>Votre service d'eau sera interrompu si le paiement n'est pas effectué avant la date limite.</p>
+        <div class="page-header-info">
+            <div class="company-name">{{ $parametres['entreprise'] }}</div>
+            <div>{{ $parametres['adresse'] }}</div>
+            <div>Tél: {{ $parametres['telephone'] }}</div>
         </div>
-
-        <div class="info-grid">
-            <div class="info-row">
-                <div class="info-label">N° Bon de Coupure:</div>
-                <div class="info-value">BC-{{ $facture->NUMERO_FACTURE }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Date d'émission:</div>
-                <div class="info-value"><span class="date-badge">{{ \Carbon\Carbon::now()->format('d/m/Y') }}</span></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">N° Client:</div>
-                <div class="info-value">{{ $facture->NUM_CLIENT }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Nom:</div>
-                <div class="info-value"><strong>{{ $facture->NOM }} {{ $facture->PRENOM }}</strong></div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Téléphone:</div>
-                <div class="info-value">{{ $facture->TELEPHONE ?? '-' }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Quartier:</div>
-                <div class="info-value">{{ $facture->QUARTIER }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">N° Facture Impayée:</div>
-                <div class="info-value">{{ $facture->NUMERO_FACTURE }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Date Facture:</div>
-                <div class="info-value">{{ \Carbon\Carbon::parse($facture->DATEFACTURE)->format('d/m/Y') }}</div>
-            </div>
-            <div class="info-row">
-                <div class="info-label">Date Échéance:</div>
-                <div class="info-value" style="color: #d32f2f; font-weight: bold;">{{ \Carbon\Carbon::parse($facture->DATEECH)->format('d/m/Y') }}</div>
-            </div>
+        <div class="page-header-meta">
+            <strong>Facture N° :</strong> {{ $facture->NUMERO_FACTURE }}<br>
+            <strong>Date Facture :</strong> {{ \Carbon\Carbon::parse($facture->DATEFACTURE)->format('d/m/Y') }}
         </div>
-
-        <table>
-            <thead>
-                <tr>
-                    <th>Description</th>
-                    <th class="right-align">Montant (FCFA)</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td>Montant Facture</td>
-                    <td class="right-align">{{ number_format($facture->TOTAL ?? 0, 0, ',', ' ') }}</td>
-                </tr>
-                <tr>
-                    <td>Déjà Payé</td>
-                    <td class="right-align" style="color: #388e3c;">-{{ number_format($facture->RECU ?? 0, 0, ',', ' ') }}</td>
-                </tr>
-                <tr style="background-color: #ffebee;">
-                    <td><strong>Frais de Coupure</strong></td>
-                    <td class="right-align" style="color: #d32f2f;"><strong>{{ number_format(2000, 0, ',', ' ') }}</strong></td>
-                </tr>
-                <tr style="font-weight: bold; font-size: 13px; background-color: #f5f5f5;">
-                    <td>TOTAL À PAYER</td>
-                    <td class="right-align" style="color: #d32f2f;">{{ number_format($facture->IMPAYE + 2000, 0, ',', ' ') }}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="amount-box">
-            MONTANT TOTAL À RÉGLER: {{ number_format($facture->IMPAYE + 2000, 0, ',', ' ') }} FCFA
-        </div>
-
-        <div class="warning-section">
-            <div class="warning-title">📋 MODALITÉS DE PAIEMENT</div>
-            <div class="warning-text">
-                <p><strong>Délai de Paiement:</strong> Veuillez régler cette somme dans un délai de 7 jours à compter de la date d'émission de cet avis.</p>
-                <p style="margin-top: 10px;"><strong>Lieu de Paiement:</strong> Vous pouvez effectuer votre paiement à nos bureaux situés à {{ $parametres['adresse'] }}.</p>
-                <p style="margin-top: 10px;"><strong>Conséquences du Non-Paiement:</strong> En cas de non-paiement dans les délais impartis, votre alimentation en eau sera interrompue.</p>
-                <p style="margin-top: 10px;"><strong>Frais de Reconnexion:</strong> Des frais supplémentaires seront appliqués pour la remise en service de votre compteur.</p>
-            </div>
-        </div>
-
-        <footer>
-            <div class="signature-area">
-                <div class="signature-block">
-                    <div>Agent ASUFOR</div>
-                    <div class="signature-line"></div>
-                    <div style="margin-top: 5px; font-size: 10px;">Nom et Signature</div>
-                </div>
-                <div class="signature-block">
-                    <div>Client</div>
-                    <div class="signature-line"></div>
-                    <div style="margin-top: 5px; font-size: 10px;">Nom et Signature</div>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 30px; font-size: 10px; color: #666;">
-                <p>Document généré le {{ now()->format('d/m/Y à H:i') }}</p>
-                <p style="margin-top: 5px;">Pour toute question, veuillez contacter le {{ $parametres['telephone'] }}</p>
-            </div>
-        </footer>
     </div>
-    @endforeach
+
+    {{-- INFO CLIENT / FACTURE --}}
+    <div class="meta-row">
+        <div class="meta-cell">
+            <fieldset>
+                <legend>Facture</legend>
+                Date : <strong>{{ \Carbon\Carbon::parse($facture->DATEFACTURE)->format('d/m/Y') }}</strong><br>
+                Facture N° : <strong>{{ $facture->NUMERO_FACTURE }}</strong><br>
+                Quartier : <strong>{{ $facture->QUARTIER ?? '-' }}</strong>
+                &nbsp; Usage : <strong>{{ $facture->USAGE_NOM ?? '-' }}</strong>
+            </fieldset>
+        </div>
+        <div class="meta-cell">
+            <fieldset>
+                <legend>Client</legend>
+                Client : <strong>{{ $facture->NOM }} {{ $facture->PRENOM }}</strong><br>
+                N° CI : <strong>{{ $facture->NUM_CI ?? '-' }}</strong><br>
+                Téléphone : <strong>{{ $facture->TELEPHONE ?? '-' }}</strong>
+            </fieldset>
+        </div>
+    </div>
+
+    {{-- TITRE --}}
+    <h1 class="bc-title">Bon de Coupure</h1>
+
+    {{-- TABLE PRINCIPALE --}}
+    <table class="main-table">
+        <thead>
+            <tr>
+                <th>N° Client</th>
+                <th>Tarif/m³</th>
+                <th>Montant facture</th>
+                @if($isBF)
+                <th>Fontainier (4)</th>
+                @endif
+                <th>Impayé (1)</th>
+                <th>Frais de coupure (3)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{ $facture->NUM_CLIENT }}</td>
+                <td>{{ $facture->USAGE_TARIF ?? $facture->TARIF ?? '-' }}</td>
+                <td>{{ number_format($facture->TOTAL ?? 0, 0, ',', ' ') }}</td>
+                @if($isBF)
+                <td>{{ number_format(intval($facture->TOTAL ?? 0) * 0.2, 0, ',', ' ') }}</td>
+                @endif
+                <td>{{ number_format($impaye, 0, ',', ' ') }}</td>
+                <td>{{ number_format($frais, 0, ',', ' ') }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {{-- MENSUALITÉS PRÊT --}}
+    <p class="section-title">Mensualités Prêt</p>
+    <table class="sub-table">
+        <thead>
+            <tr>
+                <th>Date du Prêt</th>
+                <th>Montant Total</th>
+                <th>Montant Restant</th>
+                <th>Mensualité à régler (2)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $pretDisplayTotal = 0; @endphp
+            @foreach($prets as $p)
+            @if(!empty($p->ACTIF) || !empty($p->PRET_ACTIF))
+            @php $pretDisplayTotal += intval($p->IMPAYER ?? $p->IMPAYE ?? 0); @endphp
+            <tr>
+                <td>{{ isset($p->DATE_PRET) ? \Carbon\Carbon::parse($p->DATE_PRET)->format('d/m/Y') : ($p->PRET_DATE ?? '-') }}</td>
+                <td>{{ number_format($p->MONTANT_PRET ?? $p->PRET_MONTANT ?? 0, 0, ',', ' ') }}</td>
+                <td>{{ number_format($p->IMPAYER ?? $p->PRET_IMPAYE ?? 0, 0, ',', ' ') }}</td>
+                <td>{{ number_format(intval($p->IMPAYER ?? $p->IMPAYE ?? 0), 0, ',', ' ') }}</td>
+            </tr>
+            @endif
+            @endforeach
+            <tr>
+                <td colspan="3"></td>
+                <td><strong>Total : {{ number_format($pretDisplayTotal, 0, ',', ' ') }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    {{-- ARRIÉRÉS --}}
+    <p class="section-title">Rappel des dernières factures impayées</p>
+    <table class="sub-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Numéro facture</th>
+                <th>Montant Restant (3)</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $arrDisplayTotal = 0; @endphp
+            @foreach($arrieres as $arr)
+            @php $cur = intval($arr->IMPAYE ?? 0); @endphp
+            @if($cur > 0)
+            @php $arrDisplayTotal += $cur; @endphp
+            <tr>
+                <td>{{ isset($arr->DATE) ? \Carbon\Carbon::parse($arr->DATE)->format('d/m/Y') : '-' }}</td>
+                <td>{{ $arr->TYPE ?? '-' }}</td>
+                <td>{{ $arr->NUMERO_FACTURE ?? '-' }}</td>
+                <td>{{ number_format($cur, 0, ',', ' ') }}</td>
+            </tr>
+            @endif
+            @endforeach
+            <tr>
+                <td colspan="3"></td>
+                <td><strong>Total : {{ number_format($arrDisplayTotal, 0, ',', ' ') }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    {{-- TOTAL + REMISE --}}
+    <div class="total-banner">
+        <p>MONTANT NET À PAYER (1)+(2)+(3) : {{ number_format($total, 0, ',', ' ') }} FCFA</p>
+        <p>REMISE 48H APRÈS PAIEMENT</p>
+    </div>
+
+    {{-- COUPON D'ENCAISSEMENT (positionné en bas) --}}
+    <div class="coupon-divider">
+        <span class="scissors">✂</span>
+        <div class="coupon-title">COUPON D'ENCAISSEMENT</div>
+        <div class="coupon-grid">
+            <div class="coupon-col">
+                <p><strong>FACTURE N° :</strong> {{ $facture->NUMERO_FACTURE }}</p>
+                <p><strong>DATE FACTURE :</strong> {{ \Carbon\Carbon::parse($facture->DATEFACTURE)->format('d/m/Y') }}</p>
+                <p><strong>NOM CLIENT :</strong> {{ $facture->NOM }} {{ $facture->PRENOM }}</p>
+            </div>
+            <div class="coupon-col">
+                <p><strong>N° CLIENT :</strong> {{ $facture->NUM_CLIENT }}</p>
+                <p><strong>MONTANT FACTURE :</strong> {{ number_format($total, 0, ',', ' ') }} FCFA</p>
+                <p><strong>MONTANT PAYÉ :</strong> _______________</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+@endforeach
+
 </body>
 </html>

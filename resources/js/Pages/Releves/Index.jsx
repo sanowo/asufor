@@ -22,6 +22,7 @@ export default function ReleveIndex({ quartiers, usages }) {
     const [meta, setMeta]         = useState({ consommation: 0, total: 0, count: 0, periode: null });
     const [loading, setLoading]   = useState(false);
     const [showModal, setShowModal] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [errors, setErrors]     = useState({});
 
     // ── Filtres ──────────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export default function ReleveIndex({ quartiers, usages }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
+        setSubmitting(true);
         try {
             const res = await axios.post('/releves', formData);
             if (res.data.success) {
@@ -140,7 +142,14 @@ export default function ReleveIndex({ quartiers, usages }) {
                 loadData();
             }
         } catch (err) {
-            setErrors(err.response?.data?.errors || { general: 'Erreur lors de la création du relevé' });
+            const serverErrors = err.response?.data?.errors;
+            if (serverErrors) {
+                setErrors(serverErrors);
+            } else {
+                setErrors({ general: err.response?.data?.message || 'Erreur lors de la création du relevé' });
+            }
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -458,14 +467,15 @@ export default function ReleveIndex({ quartiers, usages }) {
                                 {formData.tarif && <span>Tarif: {formData.tarif}</span>}
                             </div>
 
-                            {errors.general && (
-                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm">
-                                    {errors.general}
-                                </div>
-                            )}
-                            {errors.doublon && (
-                                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded text-sm">
-                                    ⚠️ {errors.doublon}
+                            {Object.keys(errors).length > 0 && (
+                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded text-sm space-y-1">
+                                    {errors.general && <div>{errors.general}</div>}
+                                    {errors.doublon && <div>⚠️ {errors.doublon}</div>}
+                                    {errors.date && <div>Date : {errors.date}</div>}
+                                    {errors.nouvel_index && <div>Nouvel index : {errors.nouvel_index}</div>}
+                                    {errors.ancien_index && <div>Ancien index : {errors.ancien_index}</div>}
+                                    {errors.id_client && <div>Client : {errors.id_client}</div>}
+                                    {errors.id_compteur && <div>Compteur : {errors.id_compteur}</div>}
                                 </div>
                             )}
 
@@ -474,10 +484,11 @@ export default function ReleveIndex({ quartiers, usages }) {
                                     className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button
                                     type="submit"
-                                    disabled={!formData.id_client || !formData.id_compteur}
-                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!formData.id_client || !formData.id_compteur || submitting}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                    Créer Relevé
+                                    {submitting && <Spinner size="sm" />}
+                                    {submitting ? 'Création...' : 'Créer Relevé'}
                                 </button>
                             </div>
                         </form>

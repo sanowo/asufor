@@ -152,10 +152,9 @@
                 @endif
                 <th style="width:65px;">Usage</th>
                 <th style="width:75px;">Adresse</th>
-                <th style="width:70px;">N° Compteur</th>
+                <th style="width:90px;">Téléphone</th>
                 <th class="center" style="width:55px;">Dernier Index</th>
                 <th class="center" style="width:55px;">Nouvel Index</th>
-                <th class="center" style="width:50px;">Consom.</th>
                 <th style="width:75px;">Date Relevé</th>
                 <th style="width:70px;">Observations</th>
             </tr>
@@ -171,10 +170,9 @@
                 @endif
                 <td>{{ $client->USAGE_NOM ?? '-' }}</td>
                 <td>{{ $client->ADRESSE ?? '-' }}</td>
-                <td>{{ $client->NUM_COMPTEUR ?? '-' }}</td>
+                <td>{{ $client->TELEPHONE ?? '-' }}</td>
                 <td class="index-cell">{{ $client->INDEX_COMPTEUR ?? '' }}</td>
                 <td class="index-cell"></td>
-                <td class="center"></td>
                 <td>{{ $client->DATE_DERNIER_RELEVE ? \Carbon\Carbon::parse($client->DATE_DERNIER_RELEVE)->format('d/m/Y') : '' }}</td>
                 <td></td>
             </tr>
@@ -190,7 +188,7 @@
                     <td></td><td></td><td></td>
                     <td class="index-cell"></td>
                     <td class="index-cell"></td>
-                    <td></td><td></td><td></td>
+                    <td></td><td></td>
                 </tr>
                 @endfor
             @endif

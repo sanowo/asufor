@@ -58,10 +58,12 @@ Route::prefix('caisse')->group(function () {
 Route::prefix('clients')->group(function () {
     Route::get('/', [\App\Http\Controllers\ClientController::class, 'index'])->name('clients.index');
     Route::get('/list', [\App\Http\Controllers\ClientController::class, 'list'])->name('clients.list');
+    Route::get('/next-num', [\App\Http\Controllers\ClientController::class, 'nextNumClient'])->name('clients.next-num');
+    Route::post('/', [\App\Http\Controllers\ClientController::class, 'store'])->name('clients.store');
     Route::get('/{num_client}', [\App\Http\Controllers\ClientController::class, 'show'])->name('clients.show');
     Route::get('/{num_client}/prets', [\App\Http\Controllers\ClientController::class, 'getPrets'])->name('clients.prets');
-    Route::post('/', [\App\Http\Controllers\ClientController::class, 'store'])->name('clients.store');
     Route::put('/{num_client}', [\App\Http\Controllers\ClientController::class, 'update'])->name('clients.update');
+    Route::post('/{num_client}/toggle-statut', [\App\Http\Controllers\ClientController::class, 'toggleStatut'])->name('clients.toggle-statut');
     Route::delete('/{num_client}', [\App\Http\Controllers\ClientController::class, 'destroy'])->name('clients.destroy');
 });
 

@@ -13,6 +13,7 @@ export default function FactureIndex({ quartiers, usages }) {
     const [expandedRows, setExpandedRows] = useState({});
     const [selectedFactures, setSelectedFactures] = useState([]);
     const [actionMode, setActionMode] = useState('selection'); // 'selection' ou 'filter'
+    const [pagination, setPagination] = useState({ start: 0, length: 50, total: 0 });
     const [filters, setFilters] = useState({
         numero: '',
         client: '',
@@ -24,20 +25,15 @@ export default function FactureIndex({ quartiers, usages }) {
     });
 
     // Charger les données
-    const loadData = async () => {
+    const loadData = async (start = pagination.start) => {
         setLoading(true);
         try {
             const response = await axios.get('/factures/list', {
-                params: {
-                    draw: 1,
-                    start: 0,
-                    length: 50,
-                    ...filters
-                }
+                params: { draw: 1, start, length: pagination.length, ...filters }
             });
-
             setFactures(response.data.data.result);
             setMeta(response.data.data.meta);
+            setPagination(prev => ({ ...prev, total: response.data.recordsTotal }));
         } catch (error) {
             console.error('Erreur chargement factures:', error);
         } finally {
@@ -46,8 +42,12 @@ export default function FactureIndex({ quartiers, usages }) {
     };
 
     useEffect(() => {
-        loadData();
+        setPagination(prev => ({ ...prev, start: 0 }));
     }, [filters]);
+
+    useEffect(() => {
+        loadData(pagination.start);
+    }, [filters, pagination.start]);
 
     // Toggle row expansion
     const toggleRow = (numero) => {
@@ -547,6 +547,31 @@ export default function FactureIndex({ quartiers, usages }) {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination */}
+                {pagination.total > pagination.length && (
+                    <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 mt-1 rounded-b shadow">
+                        <div className="text-sm text-gray-500">
+                            {pagination.start + 1}–{Math.min(pagination.start + pagination.length, pagination.total)} sur {pagination.total} factures
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setPagination(prev => ({ ...prev, start: Math.max(0, prev.start - prev.length) }))}
+                                disabled={pagination.start === 0}
+                                className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-50"
+                            >
+                                ← Précédent
+                            </button>
+                            <button
+                                onClick={() => setPagination(prev => ({ ...prev, start: prev.start + prev.length }))}
+                                disabled={pagination.start + pagination.length >= pagination.total}
+                                className="px-3 py-1 border rounded text-sm disabled:opacity-40 hover:bg-gray-50"
+                            >
+                                Suivant →
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </MainLayout>
     );

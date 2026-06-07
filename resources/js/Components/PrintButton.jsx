@@ -22,11 +22,18 @@ export default function PrintButton({
                 }
             });
 
-            // Create blob URL and download
-            const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+            // Détecter si la réponse est un ZIP ou un PDF
+            const contentType = response.headers['content-type'] || 'application/pdf';
+            const isZip = contentType.includes('zip');
+            const mimeType = isZip ? 'application/zip' : 'application/pdf';
+            const downloadName = isZip
+                ? filename.replace(/\.pdf$/i, '.zip')
+                : filename;
+
+            const url = window.URL.createObjectURL(new Blob([response.data], { type: mimeType }));
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', filename);
+            link.setAttribute('download', downloadName);
             document.body.appendChild(link);
             link.click();
             link.remove();

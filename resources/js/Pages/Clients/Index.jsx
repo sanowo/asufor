@@ -12,6 +12,7 @@ export default function ClientsIndex({ quartiers, usages }) {
 
     // Filters
     const [filters, setFilters] = useState({
+        num_client: '',
         search: '',
         quartier: '*',
         usage: '*',
@@ -43,6 +44,7 @@ export default function ClientsIndex({ quartiers, usages }) {
         nom: '',
         prenom: '',
         telephone: '',
+        num_carte: '',
         id_quartier: '',
         used: '',
         abonnement: '',
@@ -117,6 +119,26 @@ export default function ClientsIndex({ quartiers, usages }) {
         }
     };
 
+    // Auto-incrément num_client
+    const loadNextNumClient = async () => {
+        try {
+            const res = await axios.get('/clients/next-num');
+            setCreateForm(prev => ({ ...prev, num_client: String(res.data.next) }));
+        } catch {}
+    };
+
+    // Suspendre / réactiver
+    const handleToggleStatut = async (client) => {
+        const action = client.STATUT === 1 ? 'suspendre' : 'réactiver';
+        if (!confirm(`Voulez-vous ${action} le client ${client.NUM_CLIENT} ?`)) return;
+        try {
+            await axios.post(`/clients/${client.NUM_CLIENT}/toggle-statut`);
+            loadClients();
+        } catch {
+            alert('Erreur lors du changement de statut');
+        }
+    };
+
     // Create client
     const handleCreate = async (e) => {
         e.preventDefault();
@@ -131,10 +153,11 @@ export default function ClientsIndex({ quartiers, usages }) {
                 nom: '',
                 prenom: '',
                 telephone: '',
+                num_carte: '',
                 id_quartier: '',
                 used: '',
                 abonnement: '',
-                statut: 0
+                statut: 1
             });
             loadClients();
         } catch (error) {
@@ -309,7 +332,7 @@ export default function ClientsIndex({ quartiers, usages }) {
             <div className="mb-6 flex justify-between items-center">
                 <h1 className="text-2xl font-bold">{getTabLabel(activeTab)}</h1>
                 <button
-                    onClick={() => setShowCreateModal(true)}
+                    onClick={() => { loadNextNumClient(); setShowCreateModal(true); }}
                     className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
                     + Nouveau Client
@@ -374,12 +397,22 @@ export default function ClientsIndex({ quartiers, usages }) {
 
             {/* Filters */}
             <div className="bg-white p-4 rounded shadow mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Recherche</label>
+                        <label className="block text-sm font-medium mb-1">N° Client</label>
                         <input
                             type="text"
-                            placeholder="N°, Nom, Prénom, Tél..."
+                            placeholder="ex: 1042"
+                            className="w-full border rounded px-3 py-2"
+                            value={filters.num_client}
+                            onChange={(e) => setFilters({ ...filters, num_client: e.target.value })}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Nom / Prénom / Tél</label>
+                        <input
+                            type="text"
+                            placeholder="Nom, Prénom ou Téléphone..."
                             className="w-full border rounded px-3 py-2"
                             value={filters.search}
                             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
@@ -485,7 +518,7 @@ export default function ClientsIndex({ quartiers, usages }) {
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-sm">
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-2 flex-wrap">
                                                 <button
                                                     onClick={() => viewClient(client.NUM_CLIENT)}
                                                     className="text-blue-600 hover:text-blue-800"
@@ -499,6 +532,17 @@ export default function ClientsIndex({ quartiers, usages }) {
                                                     title="Modifier"
                                                 >
                                                     ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => handleToggleStatut(client)}
+                                                    className={`text-xs px-2 py-1 rounded border font-medium ${
+                                                        client.STATUT === 1
+                                                            ? 'text-orange-700 border-orange-300 hover:bg-orange-50'
+                                                            : 'text-green-700 border-green-300 hover:bg-green-50'
+                                                    }`}
+                                                    title={client.STATUT === 1 ? 'Suspendre' : 'Réactiver'}
+                                                >
+                                                    {client.STATUT === 1 ? 'Suspendre' : 'Réactiver'}
                                                 </button>
                                                 <button
                                                     onClick={() => handleDelete(client.NUM_CLIENT)}
@@ -588,6 +632,16 @@ export default function ClientsIndex({ quartiers, usages }) {
                                         value={createForm.telephone}
                                         onChange={(e) => setCreateForm({ ...createForm, telephone: e.target.value })}
                                     />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">N° Carte d'Identité</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border rounded px-3 py-2"
+                                        value={createForm.num_carte}
+                                        onChange={(e) => setCreateForm({ ...createForm, num_carte: e.target.value })}
+                                    />
+                                    {errors.num_carte && <p className="text-red-500 text-sm mt-1">{errors.num_carte}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Quartier *</label>

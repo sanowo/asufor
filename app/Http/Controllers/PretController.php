@@ -40,6 +40,10 @@ class PretController extends Controller
             );
 
         // Filtres
+        if ($request->filled('id_pret')) {
+            $query->where('p.ID_PRET', $request->id_pret);
+        }
+
         if ($request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {

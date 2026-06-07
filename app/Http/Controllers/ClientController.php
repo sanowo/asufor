@@ -66,11 +66,14 @@ class ClientController extends Controller
                 break;
         }
 
+        if ($request->filled('num_client')) {
+            $query->where('c.NUM_CLIENT', 'like', '%' . $request->num_client . '%');
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('c.NUM_CLIENT', 'like', "%$search%")
-                  ->orWhere('c.NOM', 'like', "%$search%")
+                $q->where('c.NOM', 'like', "%$search%")
                   ->orWhere('c.PRENOM', 'like', "%$search%")
                   ->orWhere('c.TELEPHONE', 'like', "%$search%");
             });
@@ -89,7 +92,7 @@ class ClientController extends Controller
         }
 
         $total = $query->count();
-        $clients = $query->orderBy('c.NOM', 'asc')->skip($request->input('start', 0))->take($request->input('length', 50))->get();
+        $clients = $query->orderBy('c.NUM_CLIENT', 'desc')->skip($request->input('start', 0))->take($request->input('length', 50))->get();
 
         $metaQuery = DB::table('client as c');
         if ($request->filled('search')) {
@@ -132,11 +135,11 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate(['num_client' => 'required|string|unique:client,NUM_CLIENT', 'nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'abonnement' => 'nullable|numeric', 'statut' => 'required|integer|in:0,1']);
+        $validated = $request->validate(['num_client' => 'required|string|unique:client,NUM_CLIENT', 'nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'num_carte' => 'nullable|string|max:50', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'abonnement' => 'nullable|numeric', 'statut' => 'required|integer|in:0,1']);
 
         DB::beginTransaction();
         try {
-            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'ABONNEMENT' => $validated['abonnement'] ?? 0, 'STATUT' => $validated['statut'], 'DATE_INSCRIPTION' => now()]);
+            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'NUM_CARTE' => $validated['num_carte'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'ABONNEMENT' => $validated['abonnement'] ?? 0, 'STATUT' => $validated['statut'], 'DATE_INSCRIPTION' => now()]);
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Client créé avec succès']);
         } catch (\Exception $e) {
@@ -174,6 +177,23 @@ class ClientController extends Controller
 
         DB::table('client')->where('NUM_CLIENT', $num_client)->delete();
         return response()->json(['success' => true, 'message' => 'Client supprimé avec succès']);
+    }
+
+    public function nextNumClient()
+    {
+        $max = DB::table('client')->max(DB::raw('CAST(NUM_CLIENT AS UNSIGNED)'));
+        return response()->json(['next' => ($max ?? 0) + 1]);
+    }
+
+    public function toggleStatut($num_client)
+    {
+        $client = DB::table('client')->where('NUM_CLIENT', $num_client)->first();
+        if (!$client) return response()->json(['error' => 'Client non trouvé'], 404);
+
+        $newStatut = $client->STATUT == 1 ? 0 : 1;
+        DB::table('client')->where('NUM_CLIENT', $num_client)->update(['STATUT' => $newStatut]);
+
+        return response()->json(['success' => true, 'statut' => $newStatut]);
     }
 
     public function getPrets($num_client)

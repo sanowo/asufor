@@ -20,8 +20,12 @@ export default function CaisseIndex({ typeOperations }) {
     const [paymentResult, setPaymentResult]         = useState(null);
     const [errors, setErrors]                       = useState({});
 
-    // Autocomplete recherche facture
+    // Recherche structurée facture : mois + année + 3 derniers chiffres client
+    const currentDate = new Date();
     const [factureSearch, setFactureSearch]         = useState('');
+    const [factureSearchMois, setFactureSearchMois] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'));
+    const [factureSearchAnnee, setFactureSearchAnnee] = useState(String(currentDate.getFullYear()).slice(-2));
+    const [factureSearchClient, setFactureSearchClient] = useState('');
     const [factureSuggestions, setFactureSuggestions] = useState([]);
     const [factureSearchLoading, setFactureSearchLoading] = useState(false);
     const factureSearchTimeout                      = useRef(null);
@@ -42,6 +46,8 @@ export default function CaisseIndex({ typeOperations }) {
     const [pretForm, setPretForm] = useState({
         num_client: '', montant_recu: '', date_operation: new Date().toISOString().split('T')[0],
     });
+    const [pretSearchMode, setPretSearchMode] = useState('client'); // 'client' | 'pret'
+    const [pretSearchId, setPretSearchId] = useState('');
 
     const [revenuesForm, setRevenuesForm] = useState({
         type_operation: '', montant: '', date_operation: new Date().toISOString().split('T')[0],
@@ -72,26 +78,37 @@ export default function CaisseIndex({ typeOperations }) {
     // ── Helpers ──────────────────────────────────────────────────────────────
     const formatMoney = (amount) => new Intl.NumberFormat('fr-FR').format(amount || 0);
 
-    // ── Autocomplete recherche facture ───────────────────────────────────────
-    const handleFactureSearchChange = (value) => {
-        setFactureSearch(value);
-        setFactureDetails(null);
+    // ── Recherche structurée facture ─────────────────────────────────────────
+    const buildFacturePattern = (mois, annee, client3) => {
+        // FACT{DD}{MM}{YY}{NUM_CLIENT} → on filtre par MM+YY + fin NUM_CLIENT
+        // Pattern LIKE: FACT__MMYY%CLIENT3
+        const mm = mois.padStart(2, '0');
+        const yy = annee.slice(-2);
+        const suffix = client3 ? client3.trim() : '';
+        return `FACT__${mm}${yy}%${suffix}`;
+    };
+
+    const searchFactureStructured = async () => {
+        setErrors({});
         setFactureSuggestions([]);
-        clearTimeout(factureSearchTimeout.current);
-        if (value.length < 2) return;
-        factureSearchTimeout.current = setTimeout(async () => {
-            setFactureSearchLoading(true);
-            try {
-                const res = await axios.get('/factures/list', {
-                    params: { numero: value, start: 0, length: 8, draw: 1 }
-                });
-                setFactureSuggestions(res.data.data.result || []);
-            } catch {
-                setFactureSuggestions([]);
-            } finally {
-                setFactureSearchLoading(false);
+        setFactureDetails(null);
+        const pattern = buildFacturePattern(factureSearchMois, factureSearchAnnee, factureSearchClient);
+        setFactureSearchLoading(true);
+        try {
+            const res = await axios.get('/factures/list', {
+                params: { numero: pattern, start: 0, length: 20, draw: 1 }
+            });
+            const results = res.data.data.result || [];
+            if (results.length === 1) {
+                await selectFactureSuggestion(results[0]);
+            } else {
+                setFactureSuggestions(results);
             }
-        }, 300);
+        } catch {
+            setErrors({ facture: 'Erreur lors de la recherche' });
+        } finally {
+            setFactureSearchLoading(false);
+        }
     };
 
     const selectFactureSuggestion = async (facture) => {
@@ -102,23 +119,6 @@ export default function CaisseIndex({ typeOperations }) {
             const response = await axios.get(`/factures/${facture.NUMERO_FACTURE}`);
             setFactureDetails(response.data.success);
             setPaymentForm(prev => ({ ...prev, numero_facture: facture.NUMERO_FACTURE, pret_include: [], pay_frais_coupure: false }));
-        } catch {
-            setErrors({ facture: 'Facture non trouvée' });
-            setFactureDetails(null);
-        }
-    };
-
-    // ── Rechercher facture (gardé pour compatibilité) ────────────────────────
-    const searchFacture = async () => {
-        if (!factureSearch) {
-            setErrors({ facture: 'Veuillez saisir un numéro de facture' });
-            return;
-        }
-        setErrors({});
-        try {
-            const response = await axios.get(`/factures/${factureSearch}`);
-            setFactureDetails(response.data.success);
-            setPaymentForm(prev => ({ ...prev, numero_facture: factureSearch, pret_include: [], pay_frais_coupure: false }));
         } catch {
             setErrors({ facture: 'Facture non trouvée' });
             setFactureDetails(null);
@@ -352,32 +352,49 @@ export default function CaisseIndex({ typeOperations }) {
                     <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">Nouveau Paiement - Waterfall</h3>
-                            <button onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); setPaymentForm({ numero_facture: '', montant_recu: '', pret_include: [], pay_frais_coupure: false, date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
+                            <button onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); setFactureSearchClient(''); setErrors({}); setPaymentForm({ numero_facture: '', montant_recu: '', pret_include: [], pay_frais_coupure: false, date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
                         </div>
                         <form onSubmit={handlePayment} className="space-y-4">
                             <div className="border-b pb-4">
                                 <label className="block text-sm font-medium mb-2">1. Rechercher la facture</label>
-                                <div className="relative">
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <input
-                                                type="text"
-                                                className="w-full border rounded px-3 py-2 pr-8"
-                                                placeholder="N° facture (ex: F-2024-001)..."
-                                                value={factureSearch}
-                                                onChange={(e) => handleFactureSearchChange(e.target.value)}
-                                                autoComplete="off"
-                                            />
-                                            {factureSearchLoading && (
-                                                <div className="absolute right-2 top-2.5"><Spinner size="sm" /></div>
-                                            )}
-                                        </div>
-                                        <button type="button" onClick={searchFacture} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 whitespace-nowrap">
-                                            Rechercher
-                                        </button>
+                                <div className="grid grid-cols-3 gap-2 mb-2">
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Mois</label>
+                                        <select className="w-full border rounded px-2 py-2 text-sm" value={factureSearchMois}
+                                            onChange={(e) => { setFactureSearchMois(e.target.value); setFactureSuggestions([]); setFactureDetails(null); }}>
+                                            {[['01','Janvier'],['02','Février'],['03','Mars'],['04','Avril'],['05','Mai'],['06','Juin'],
+                                              ['07','Juillet'],['08','Août'],['09','Septembre'],['10','Octobre'],['11','Novembre'],['12','Décembre']
+                                            ].map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                                        </select>
                                     </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">Année</label>
+                                        <select className="w-full border rounded px-2 py-2 text-sm" value={factureSearchAnnee}
+                                            onChange={(e) => { setFactureSearchAnnee(e.target.value); setFactureSuggestions([]); setFactureDetails(null); }}>
+                                            {Array.from({ length: 5 }, (_, i) => {
+                                                const y = new Date().getFullYear() - i;
+                                                return <option key={y} value={String(y).slice(-2)}>{y}</option>;
+                                            })}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-gray-500 mb-1">3 derniers chiffres N° client</label>
+                                        <input type="text" maxLength={3} placeholder="ex: 042"
+                                            className="w-full border rounded px-2 py-2 text-sm"
+                                            value={factureSearchClient}
+                                            onChange={(e) => { setFactureSearchClient(e.target.value.replace(/\D/g, '')); setFactureSuggestions([]); setFactureDetails(null); }} />
+                                    </div>
+                                </div>
+                                <div className="relative">
+                                    <button type="button" onClick={searchFactureStructured}
+                                        disabled={factureSearchLoading}
+                                        className="w-full bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2">
+                                        {factureSearchLoading ? <Spinner size="sm" /> : null}
+                                        Rechercher
+                                    </button>
                                     {factureSuggestions.length > 0 && (
-                                        <div className="absolute z-20 w-full bg-white border rounded shadow-lg mt-1 max-h-56 overflow-y-auto">
+                                        <div className="absolute z-20 w-full bg-white border rounded shadow-lg mt-1 max-h-64 overflow-y-auto">
+                                            <div className="px-3 py-1.5 text-xs text-gray-400 border-b">{factureSuggestions.length} facture(s) trouvée(s) — cliquer pour sélectionner</div>
                                             {factureSuggestions.map((f) => (
                                                 <button
                                                     key={f.NUMERO_FACTURE}
@@ -563,7 +580,7 @@ export default function CaisseIndex({ typeOperations }) {
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
 
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowPaymentModal(false); setFactureDetails(null); setFactureSearch(''); setFactureSuggestions([]); setFactureSearchClient(''); setErrors({}); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:bg-gray-400" disabled={!factureDetails}>Enregistrer Paiement</button>
                             </div>
                         </form>
@@ -577,7 +594,7 @@ export default function CaisseIndex({ typeOperations }) {
                     <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">Payer Abonnement</h3>
-                            <button onClick={() => { setShowAbonnementModal(false); setClientDetails(null); setAbonnementForm({ num_client: '', montant: '', date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
+                            <button onClick={() => { setShowAbonnementModal(false); setClientDetails(null); setErrors({}); setAbonnementForm({ num_client: '', montant: '', date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
                         </div>
                         <form onSubmit={async (e) => {
                             e.preventDefault(); setErrors({});
@@ -611,7 +628,7 @@ export default function CaisseIndex({ typeOperations }) {
                             </div>
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => setShowAbonnementModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowAbonnementModal(false); setErrors({}); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">Enregistrer</button>
                             </div>
                         </form>
@@ -625,7 +642,7 @@ export default function CaisseIndex({ typeOperations }) {
                     <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="text-xl font-bold">Payer Prêt(s)</h3>
-                            <button onClick={() => { setShowPretModal(false); setClientDetails(null); setPretForm({ num_client: '', montant_recu: '', date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
+                            <button onClick={() => { setShowPretModal(false); setClientDetails(null); setErrors({}); setPretSearchId(''); setPretSearchMode('client'); setPretForm({ num_client: '', montant_recu: '', date_operation: new Date().toISOString().split('T')[0] }); }} className="text-gray-500 hover:text-gray-700">✕</button>
                         </div>
                         <form onSubmit={async (e) => {
                             e.preventDefault(); setErrors({});
@@ -671,17 +688,51 @@ export default function CaisseIndex({ typeOperations }) {
                                 </>
                             )}
                             <div>
-                                <label className="block text-sm font-medium mb-1">N° Client</label>
-                                <div className="flex gap-2">
-                                    <input type="text" className="flex-1 border rounded px-3 py-2" value={pretForm.num_client}
-                                        onChange={(e) => setPretForm({ ...pretForm, num_client: e.target.value })} required />
-                                    <button type="button" onClick={async () => {
-                                        try {
-                                            const response = await axios.get(`/clients/${pretForm.num_client}/prets`);
-                                            setClientDetails(response.data);
-                                        } catch { alert('Client non trouvé'); }
-                                    }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Rechercher</button>
+                                <div className="flex gap-2 mb-2">
+                                    <button type="button"
+                                        onClick={() => { setPretSearchMode('client'); setClientDetails(null); setPretSearchId(''); }}
+                                        className={`text-sm px-3 py-1 rounded border ${pretSearchMode === 'client' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                                        Par N° Client
+                                    </button>
+                                    <button type="button"
+                                        onClick={() => { setPretSearchMode('pret'); setClientDetails(null); setPretForm(prev => ({ ...prev, num_client: '' })); }}
+                                        className={`text-sm px-3 py-1 rounded border ${pretSearchMode === 'pret' ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}>
+                                        Par N° Prêt
+                                    </button>
                                 </div>
+                                {pretSearchMode === 'client' ? (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">N° Client</label>
+                                        <div className="flex gap-2">
+                                            <input type="text" className="flex-1 border rounded px-3 py-2" value={pretForm.num_client}
+                                                onChange={(e) => setPretForm({ ...pretForm, num_client: e.target.value })} required={pretSearchMode === 'client'} />
+                                            <button type="button" onClick={async () => {
+                                                try {
+                                                    const response = await axios.get(`/clients/${pretForm.num_client}/prets`);
+                                                    setClientDetails(response.data);
+                                                } catch { alert('Client non trouvé'); }
+                                            }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Rechercher</button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label className="block text-sm font-medium mb-1">N° Prêt</label>
+                                        <div className="flex gap-2">
+                                            <input type="text" className="flex-1 border rounded px-3 py-2" value={pretSearchId}
+                                                onChange={(e) => setPretSearchId(e.target.value)} required={pretSearchMode === 'pret'} />
+                                            <button type="button" onClick={async () => {
+                                                try {
+                                                    const response = await axios.get('/prets/list', { params: { id_pret: pretSearchId, start: 0, length: 1 } });
+                                                    const pret = response.data.data?.[0];
+                                                    if (!pret) { alert('Prêt non trouvé'); return; }
+                                                    const clientRes = await axios.get(`/clients/${pret.NUM_CLIENT}/prets`);
+                                                    setClientDetails(clientRes.data);
+                                                    setPretForm(prev => ({ ...prev, num_client: pret.NUM_CLIENT }));
+                                                } catch { alert('Prêt non trouvé'); }
+                                            }} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Rechercher</button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block text-sm font-medium mb-1">Montant Reçu</label>
@@ -695,7 +746,7 @@ export default function CaisseIndex({ typeOperations }) {
                             </div>
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => setShowPretModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowPretModal(false); setErrors({}); setPretSearchId(''); setPretSearchMode('client'); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Enregistrer</button>
                             </div>
                         </form>
@@ -740,7 +791,7 @@ export default function CaisseIndex({ typeOperations }) {
                             </div>
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => setShowRevenuesModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowRevenuesModal(false); setErrors({}); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-teal-600 text-white rounded hover:bg-teal-700">Enregistrer</button>
                             </div>
                         </form>
@@ -785,7 +836,7 @@ export default function CaisseIndex({ typeOperations }) {
                             </div>
                             {errors.general && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">{errors.general}</div>}
                             <div className="flex justify-end gap-2 pt-4">
-                                <button type="button" onClick={() => setShowDepensesModal(false)} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
+                                <button type="button" onClick={() => { setShowDepensesModal(false); setErrors({}); }} className="px-4 py-2 border rounded hover:bg-gray-100">Annuler</button>
                                 <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Enregistrer</button>
                             </div>
                         </form>

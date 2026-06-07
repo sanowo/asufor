@@ -184,7 +184,7 @@ class PrintController extends Controller
             });
         }
 
-        $clients = $query->orderBy('q.NOM')->orderBy('c.NOM')->get();
+        $clients = $query->orderBy('c.NUM_CLIENT', 'asc')->get();
 
         if ($clients->isEmpty()) {
             return response()->json(['error' => 'Aucun client trouvé pour ces filtres'], 404);

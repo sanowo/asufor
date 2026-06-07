@@ -20,11 +20,12 @@ export default function CaisseIndex({ typeOperations }) {
     const [paymentResult, setPaymentResult]         = useState(null);
     const [errors, setErrors]                       = useState({});
 
-    // Recherche structurée facture : mois + année + 3 derniers chiffres client
+    // Recherche structurée facture : mois + année + num client
     const currentDate = new Date();
+    const prevMonthDate = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     const [factureSearch, setFactureSearch]         = useState('');
-    const [factureSearchMois, setFactureSearchMois] = useState(String(currentDate.getMonth() + 1).padStart(2, '0'));
-    const [factureSearchAnnee, setFactureSearchAnnee] = useState(String(currentDate.getFullYear()).slice(-2));
+    const [factureSearchMois, setFactureSearchMois] = useState(String(prevMonthDate.getMonth() + 1).padStart(2, '0'));
+    const [factureSearchAnnee, setFactureSearchAnnee] = useState(String(prevMonthDate.getFullYear()).slice(-2));
     const [factureSearchClient, setFactureSearchClient] = useState('');
     const [factureSuggestions, setFactureSuggestions] = useState([]);
     const [factureSearchLoading, setFactureSearchLoading] = useState(false);
@@ -79,13 +80,12 @@ export default function CaisseIndex({ typeOperations }) {
     const formatMoney = (amount) => new Intl.NumberFormat('fr-FR').format(amount || 0);
 
     // ── Recherche structurée facture ─────────────────────────────────────────
-    const buildFacturePattern = (mois, annee, client3) => {
-        // FACT{DD}{MM}{YY}{NUM_CLIENT} → on filtre par MM+YY + fin NUM_CLIENT
-        // Pattern LIKE: FACT__MMYY%CLIENT3
+    // Format : FACT{DD}{MM}{YY}{NUM_CLIENT} ex: FACT010625842
+    const buildFacturePattern = (mois, annee, numClient) => {
         const mm = mois.padStart(2, '0');
         const yy = annee.slice(-2);
-        const suffix = client3 ? client3.trim() : '';
-        return `FACT__${mm}${yy}%${suffix}`;
+        const suffix = numClient ? numClient.trim() : '';
+        return suffix ? `FACT__${mm}${yy}%${suffix}` : `FACT__${mm}${yy}%`;
     };
 
     const searchFactureStructured = async () => {
@@ -187,7 +187,7 @@ export default function CaisseIndex({ typeOperations }) {
         }
         return { total, impaye };
     };
-    const totals = calculateFactureTotals();
+
 
     // ── Render ───────────────────────────────────────────────────────────────
     return (
@@ -378,8 +378,8 @@ export default function CaisseIndex({ typeOperations }) {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-xs text-gray-500 mb-1">3 derniers chiffres N° client</label>
-                                        <input type="text" maxLength={3} placeholder="ex: 042"
+                                        <label className="block text-xs text-gray-500 mb-1">N° client</label>
+                                        <input type="text" placeholder="ex: 842"
                                             className="w-full border rounded px-2 py-2 text-sm"
                                             value={factureSearchClient}
                                             onChange={(e) => { setFactureSearchClient(e.target.value.replace(/\D/g, '')); setFactureSuggestions([]); setFactureDetails(null); }} />

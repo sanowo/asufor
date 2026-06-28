@@ -67,7 +67,7 @@ class ClientController extends Controller
         }
 
         if ($request->filled('num_client')) {
-            $query->where('c.NUM_CLIENT', 'like', '%' . $request->num_client . '%');
+            $query->where('c.NUM_CLIENT', 'like',  $request->num_client . '%');
         }
 
         if ($request->filled('search')) {
@@ -75,7 +75,7 @@ class ClientController extends Controller
             $query->where(function($q) use ($search) {
                 $q->where('c.NOM', 'like', "%$search%")
                   ->orWhere('c.PRENOM', 'like', "%$search%")
-                  ->orWhere('c.TELEPHONE', 'like', "%$search%");
+                  ->orWhere('c.NUM_CLIENT', 'like', "$search%");
             });
         }
 
@@ -91,20 +91,15 @@ class ClientController extends Controller
             $query->where('c.STATUT', $request->statut);
         }
 
-        $total = $query->count();
+        $metaQuery = clone $query;
+        $total  = $query->count();
         $clients = $query->orderBy('c.NUM_CLIENT', 'desc')->skip($request->input('start', 0))->take($request->input('length', 50))->get();
 
-        $metaQuery = DB::table('client as c');
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $metaQuery->where(function($q) use ($search) {
-                $q->where('c.NUM_CLIENT', 'like', "%$search%")
-                  ->orWhere('c.NOM', 'like', "%$search%")
-                  ->orWhere('c.PRENOM', 'like', "%$search%");
-            });
-        }
-
-        $meta = ['count' => $metaQuery->count(), 'actifs' => (clone $metaQuery)->where('c.STATUT', 1)->count(), 'suspendus' => (clone $metaQuery)->where('c.STATUT', 0)->count()];
+        $meta = [
+            'count'     => $metaQuery->count(),
+            'actifs'    => (clone $metaQuery)->where('c.STATUT', 1)->count(),
+            'suspendus' => (clone $metaQuery)->where('c.STATUT', 0)->count(),
+        ];
 
         return response()->json(['data' => ['result' => $clients, 'meta' => $meta], 'recordsTotal' => $total, 'recordsFiltered' => $total]);
     }

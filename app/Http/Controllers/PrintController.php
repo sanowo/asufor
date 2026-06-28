@@ -9,7 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class PrintController extends Controller
 {
     // Nombre max de ressources par PDF avant de basculer en ZIP
-    private const CHUNK_SIZE = 200;
+    private const CHUNK_SIZE = 250;
 
     // ─────────────────────────────────────────────
     //  FACTURES (A4 portrait, coupon + ciseaux)

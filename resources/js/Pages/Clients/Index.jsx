@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
 import PrintButton from '../../Components/PrintButton';
+import Spinner from '../../Components/Spinner';
 import axios from 'axios';
 
 export default function ClientsIndex({ quartiers, usages }) {
@@ -82,14 +83,20 @@ export default function ClientsIndex({ quartiers, usages }) {
         setPagination(prev => ({ ...prev, start: 0 }));
     };
 
+    const abortRef = useRef(null);
+
     // Load clients
-    const loadClients = async () => {
+    const loadClients = async (filtersOverride, startOverride) => {
+        if (abortRef.current) abortRef.current.abort();
+        abortRef.current = new AbortController();
+
         setLoading(true);
         try {
             const response = await axios.get('/clients/list', {
+                signal: abortRef.current.signal,
                 params: {
-                    ...filters,
-                    start: pagination.start,
+                    ...(filtersOverride ?? filters),
+                    start: startOverride ?? pagination.start,
                     length: pagination.length
                 }
             });
@@ -97,16 +104,22 @@ export default function ClientsIndex({ quartiers, usages }) {
             setClients(response.data.data.result);
             setMeta(response.data.data.meta);
             setPagination(prev => ({ ...prev, total: response.data.recordsTotal }));
+            setLoading(false);
         } catch (error) {
+            if (axios.isCancel(error)) return;
             console.error('Error loading clients:', error);
-        } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
+        setPagination(prev => ({ ...prev, start: 0 }));
+        loadClients(filters, 0);
+    }, [filters]);
+
+    useEffect(() => {
         loadClients();
-    }, [filters, pagination.start, pagination.length]);
+    }, [pagination.start]);
 
     // View client details
     const viewClient = async (num_client) => {
@@ -369,19 +382,25 @@ export default function ClientsIndex({ quartiers, usages }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Total Clients</div>
-                    <div className="text-2xl font-bold">{meta.count}</div>
+                    {loading ? <Spinner size="sm" className="mt-2" /> : (
+                        <div className="text-2xl font-bold">{meta.count}</div>
+                    )}
                 </div>
                 <div className="bg-white p-4 rounded shadow">
                     <div className="text-sm text-gray-500">Clients Actifs</div>
-                    <div className="text-2xl font-bold text-green-600">{meta.actifs}</div>
+                    {loading ? <Spinner size="sm" color="green" className="mt-2" /> : (
+                        <div className="text-2xl font-bold text-green-600">{meta.actifs}</div>
+                    )}
                 </div>
                 <div className="bg-white p-4 rounded shadow">
                     <div className="flex justify-between items-center">
                         <div>
                             <div className="text-sm text-gray-500">Clients Suspendus</div>
-                            <div className="text-2xl font-bold text-red-600">{meta.suspendus}</div>
+                            {loading ? <Spinner size="sm" color="red" className="mt-2" /> : (
+                                <div className="text-2xl font-bold text-red-600">{meta.suspendus}</div>
+                            )}
                         </div>
-                        {activeTab === 'suspendus' && meta.suspendus > 0 && (
+                        {!loading && activeTab === 'suspendus' && meta.suspendus > 0 && (
                             <PrintButton
                                 endpoint="/print/clients-suspendus"
                                 data={{}}

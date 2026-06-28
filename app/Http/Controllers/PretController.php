@@ -47,10 +47,9 @@ class PretController extends Controller
         if ($request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
-                $q->where('p.NUM_CLIENT', 'LIKE', "%{$search}%")
+                $q->where('p.NUM_CLIENT', 'LIKE', "{$search}%")
                   ->orWhere('c.NOM', 'LIKE', "%{$search}%")
-                  ->orWhere('c.PRENOM', 'LIKE', "%{$search}%")
-                  ->orWhere('p.MOTIF', 'LIKE', "%{$search}%");
+                  ->orWhere('c.PRENOM', 'LIKE', "%{$search}%");
             });
         }
 

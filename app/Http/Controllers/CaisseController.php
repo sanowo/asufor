@@ -191,8 +191,8 @@ public function listOperations(Request $request)
     /**
      * PAIEMENT - Algorithme waterfall CRITIQUE
      */
-    public function paiement(Request $request)
-    {
+public function paiement(Request $request)
+{
         $validated = $request->validate([
             'numero_facture' => 'required|string',
             'montant_recu' => 'required|integer|min:0',
@@ -298,7 +298,7 @@ public function listOperations(Request $request)
     {
         $validated = $request->validate([
             'id_operation' => 'required|integer',
-            'id_typeop' => 'required|integer'
+            // 'id_typeop' => 'required|integer'
         ]);
 
         DB::beginTransaction();

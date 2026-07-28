@@ -72,7 +72,7 @@ export default function FactureIndex({ quartiers, usages }) {
     useEffect(() => {
         const timeout = setTimeout(() => {
             loadData(pagination.start);
-        }, 300);
+        }, 1000);
 
         return () => clearTimeout(timeout);
         // eslint-disable-next-line react-hooks/exhaustive-deps

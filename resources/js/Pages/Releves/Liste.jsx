@@ -209,7 +209,7 @@ export default function RelevesListe({ quartiers, usages }) {
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quartier</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Compteur</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ancien</th>
+                                {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ancien</th> */}
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nouveau</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Conso</th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Montant</th>
@@ -240,7 +240,7 @@ export default function RelevesListe({ quartiers, usages }) {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{releve.QUARTIER}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{releve.NUM_COMPTEUR}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">{formatMoney(releve.ANCIEN_INDEX)}</td>
+                                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm">{formatMoney(releve.ANCIEN_INDEX)}</td> */}
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">{formatMoney(releve.RELEVE)}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-green-600">
                                             {formatMoney(releve.CONSOMMATION)}

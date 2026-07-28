@@ -45,7 +45,7 @@ export default function ClientsIndex({ quartiers, usages }) {
         nom: '',
         prenom: '',
         telephone: '',
-        num_carte: '',
+        num_ci: '',
         id_quartier: '',
         used: '',
         abonnement: '',
@@ -166,7 +166,7 @@ export default function ClientsIndex({ quartiers, usages }) {
                 nom: '',
                 prenom: '',
                 telephone: '',
-                num_carte: '',
+                num_ci: '',
                 id_quartier: '',
                 used: '',
                 abonnement: '',
@@ -657,10 +657,10 @@ export default function ClientsIndex({ quartiers, usages }) {
                                     <input
                                         type="text"
                                         className="w-full border rounded px-3 py-2"
-                                        value={createForm.num_carte}
-                                        onChange={(e) => setCreateForm({ ...createForm, num_carte: e.target.value })}
+                                        value={createForm.num_ci}
+                                        onChange={(e) => setCreateForm({ ...createForm, num_ci: e.target.value })}
                                     />
-                                    {errors.num_carte && <p className="text-red-500 text-sm mt-1">{errors.num_carte}</p>}
+                                    {errors.num_ci && <p className="text-red-500 text-sm mt-1">{errors.num_ci}</p>}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Quartier *</label>

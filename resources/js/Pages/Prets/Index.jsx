@@ -178,6 +178,17 @@ export default function PretsIndex() {
         return new Intl.NumberFormat('fr-FR').format(amount || 0);
     };
 
+    // sync mensualite
+    useEffect(() => {
+    const montant = Number(formData.montant);
+    const tranche = Number(formData.tranche);
+
+    setFormData(prev => ({
+        ...prev,
+        mensualite: tranche > 0 ? Math.ceil(montant / tranche) : "",
+    }));
+}, [formData.montant, formData.tranche]);
+
     return (
         <MainLayout title="Gestion des Prêts">
             <Head title="Prêts" />

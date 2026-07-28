@@ -450,7 +450,8 @@ public function listOperations(Request $request)
                 'ID_OP_PARENT' => $idOp,
                 'ID_TYPEOPERATION' => $idTypeOp,
                 'ID_OP_TARGET' => $validated['num_client'],
-                'MONTANT' => $validated['montant']
+                'MONTANT' => $validated['montant'],
+                'DATE_OPERATION' => now()->toDateString()
             ]);
 
             DB::commit();
@@ -527,7 +528,8 @@ public function listOperations(Request $request)
                         'ID_OP_PARENT' => $idOp,
                         'ID_TYPEOPERATION' => $typeOp,
                         'ID_OP_TARGET' => $pret->ID_PRET,
-                        'MONTANT' => $montant_a_payer
+                        'MONTANT' => $montant_a_payer,
+                        'DATE_OPERATION' => now()->toDateString()
                     ]);
 
                     $montant_restant -= $montant_a_payer;
@@ -588,7 +590,8 @@ public function listOperations(Request $request)
                 'ID_OP_PARENT' => $idOp,
                 'ID_TYPEOPERATION' => $validated['type_operation'],
                 'ID_OP_TARGET' => 'CAISSE',
-                'MONTANT' => $validated['montant']
+                'MONTANT' => $validated['montant'],
+                'DATE_OPERATION' => now()->toDateString()
             ]);
 
             DB::commit();
@@ -644,7 +647,8 @@ public function listOperations(Request $request)
                 'ID_OP_PARENT' => $idOp,
                 'ID_TYPEOPERATION' => $validated['type_operation'],
                 'ID_OP_TARGET' => 'CAISSE',
-                'MONTANT' => $validated['montant']
+                'MONTANT' => $validated['montant'],
+                'DATE_OPERATION' => now()->toDateString()
             ]);
 
             DB::commit();

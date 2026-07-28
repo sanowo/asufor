@@ -134,7 +134,7 @@ class ClientController extends Controller
 
         DB::beginTransaction();
         try {
-            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'NUM_CI' => $validated['num_ci'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'STATUT' => $validated['statut'], 'DATE_INSCRIPTION' => now()]);
+            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'NUM_CI' => $validated['num_ci'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'STATUT' => $validated['statut'], 'DATE' => now()]);
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Client créé avec succès']);
         } catch (\Exception $e) {

@@ -24,39 +24,40 @@ export default function FactureIndex({ quartiers, usages }) {
         client_usage: '*'
     });
 
-    // Ref pour pouvoir annuler la requête en cours si une nouvelle est déclenchée
-    const abortControllerRef = useRef(null);
+    // Compteur de séquence : identifie la requête la plus récente lancée.
+    // Contrairement à AbortController, ceci fonctionne même si les réponses
+    // reviennent dans le désordre (ex: la requête "5" répond après "528"),
+    // et ne dépend pas de la version d'axios.
+    const requestIdRef = useRef(0);
 
     // Charger les données
     const loadData = async (start = pagination.start) => {
-        // Annule la requête précédente si elle est encore en cours,
-        // pour éviter qu'une réponse "obsolète" (ex: recherche "52")
-        // n'écrase le résultat d'une recherche plus récente (ex: "528")
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        const controller = new AbortController();
-        abortControllerRef.current = controller;
+        const currentRequestId = ++requestIdRef.current;
 
         setLoading(true);
         try {
             const response = await axios.get('/factures/list', {
-                params: { draw: 1, start, length: pagination.length, ...filters },
-                signal: controller.signal
+                params: { draw: 1, start, length: pagination.length, ...filters }
             });
+
+            // Si une requête plus récente a été lancée entre-temps, on ignore
+            // cette réponse même si elle arrive maintenant : elle est obsolète.
+            if (currentRequestId !== requestIdRef.current) {
+                return;
+            }
+
             setFactures(response.data.data.result);
             setMeta(response.data.data.meta);
             setPagination(prev => ({ ...prev, total: response.data.recordsTotal }));
         } catch (error) {
-            if (axios.isCancel(error) || error.name === 'CanceledError') {
-                // Requête annulée volontairement (une plus récente l'a remplacée) : on ignore
+            if (currentRequestId !== requestIdRef.current) {
+                // Réponse obsolète (même en cas d'erreur), on ignore
                 return;
             }
             console.error('Erreur chargement factures:', error);
         } finally {
-            // On ne désactive le loading que si c'est toujours la requête active,
-            // pour éviter un clignotement si une requête plus récente est déjà en cours
-            if (abortControllerRef.current === controller) {
+            // On ne désactive le loading que si c'est toujours la requête la plus récente
+            if (currentRequestId === requestIdRef.current) {
                 setLoading(false);
             }
         }

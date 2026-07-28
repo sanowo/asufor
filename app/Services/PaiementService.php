@@ -316,6 +316,7 @@ class PaiementService
                 'ID_TYPEOPERATION' => $detail['type_id'],
                 'ID_OP_TARGET' => $detail['target'],
                 'MONTANT' => $detail['montant'],
+                'DATE_OPERATION' => now()->toDateString(),
                 'DATE_LOG' => now()
             ]);
         }

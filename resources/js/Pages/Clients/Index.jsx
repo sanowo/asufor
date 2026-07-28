@@ -48,7 +48,6 @@ export default function ClientsIndex({ quartiers, usages }) {
         num_ci: '',
         id_quartier: '',
         used: '',
-        abonnement: '',
         statut: 1
     });
 
@@ -58,7 +57,6 @@ export default function ClientsIndex({ quartiers, usages }) {
         telephone: '',
         id_quartier: '',
         used: '',
-        abonnement: '',
         statut: 1
     });
 
@@ -169,7 +167,6 @@ export default function ClientsIndex({ quartiers, usages }) {
                 num_ci: '',
                 id_quartier: '',
                 used: '',
-                abonnement: '',
                 statut: 1
             });
             loadClients();
@@ -190,7 +187,6 @@ export default function ClientsIndex({ quartiers, usages }) {
             telephone: client.TELEPHONE || '',
             id_quartier: client.ID_QUARTIER,
             used: client.USED,
-            abonnement: client.ABONNEMENT || '',
             statut: client.STATUT
         });
         setSelectedClient(client);
@@ -692,16 +688,7 @@ export default function ClientsIndex({ quartiers, usages }) {
                                     </select>
                                     {errors.used && <p className="text-red-500 text-sm mt-1">{errors.used}</p>}
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Abonnement</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        className="w-full border rounded px-3 py-2"
-                                        value={createForm.abonnement}
-                                        onChange={(e) => setCreateForm({ ...createForm, abonnement: e.target.value })}
-                                    />
-                                </div>
+                                
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Statut *</label>
                                     <select
@@ -806,16 +793,7 @@ export default function ClientsIndex({ quartiers, usages }) {
                                     </select>
                                     {errors.used && <p className="text-red-500 text-sm mt-1">{errors.used}</p>}
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-medium mb-1">Abonnement</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        className="w-full border rounded px-3 py-2"
-                                        value={editForm.abonnement}
-                                        onChange={(e) => setEditForm({ ...editForm, abonnement: e.target.value })}
-                                    />
-                                </div>
+                                
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Statut *</label>
                                     <select
@@ -887,10 +865,7 @@ export default function ClientsIndex({ quartiers, usages }) {
                                     <div className="text-sm text-gray-500">Usage</div>
                                     <div className="font-medium">{selectedClient.client.USAGE_NOM}</div>
                                 </div>
-                                <div>
-                                    <div className="text-sm text-gray-500">Abonnement</div>
-                                    <div className="font-medium">{selectedClient.client.ABONNEMENT || 0} FCFA</div>
-                                </div>
+                                
                                 <div>
                                     <div className="text-sm text-gray-500">Statut</div>
                                     <div>

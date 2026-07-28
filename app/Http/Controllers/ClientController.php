@@ -130,11 +130,11 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate(['num_client' => 'required|string|unique:client,NUM_CLIENT', 'nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'num_ci' => 'nullable|string|max:50', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'abonnement' => 'nullable|numeric', 'statut' => 'required|integer|in:0,1']);
+        $validated = $request->validate(['num_client' => 'required|string|unique:client,NUM_CLIENT', 'nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'num_ci' => 'nullable|string|max:50', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'statut' => 'required|integer|in:0,1']);
 
         DB::beginTransaction();
         try {
-            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'NUM_CI' => $validated['num_ci'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'ABONNEMENT' => $validated['abonnement'] ?? 0, 'STATUT' => $validated['statut'], 'DATE_INSCRIPTION' => now()]);
+            DB::table('client')->insert(['NUM_CLIENT' => $validated['num_client'], 'NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'NUM_CI' => $validated['num_ci'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'STATUT' => $validated['statut'], 'DATE_INSCRIPTION' => now()]);
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Client créé avec succès']);
         } catch (\Exception $e) {
@@ -145,11 +145,11 @@ class ClientController extends Controller
 
     public function update(Request $request, $num_client)
     {
-        $validated = $request->validate(['nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'abonnement' => 'nullable|numeric', 'statut' => 'required|integer|in:0,1']);
+        $validated = $request->validate(['nom' => 'required|string|max:255', 'prenom' => 'required|string|max:255', 'telephone' => 'nullable|string|max:20', 'id_quartier' => 'required|integer', 'used' => 'required|integer', 'statut' => 'required|integer|in:0,1']);
 
         DB::beginTransaction();
         try {
-            DB::table('client')->where('NUM_CLIENT', $num_client)->update(['NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'ABONNEMENT' => $validated['abonnement'] ?? 0, 'STATUT' => $validated['statut']]);
+            DB::table('client')->where('NUM_CLIENT', $num_client)->update(['NOM' => strtoupper($validated['nom']), 'PRENOM' => ucfirst($validated['prenom']), 'TELEPHONE' => $validated['telephone'] ?? null, 'ID_QUARTIER' => $validated['id_quartier'], 'USED' => $validated['used'], 'STATUT' => $validated['statut']]);
             DB::commit();
             return response()->json(['success' => true, 'message' => 'Client mis à jour avec succès']);
         } catch (\Exception $e) {

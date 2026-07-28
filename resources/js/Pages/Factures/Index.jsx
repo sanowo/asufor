@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import PeriodSelector from '../../Components/PeriodSelector';
 import { Head } from '@inertiajs/react';
 import MainLayout from '../../Layouts/MainLayout';
@@ -24,20 +24,41 @@ export default function FactureIndex({ quartiers, usages }) {
         client_usage: '*'
     });
 
+    // Ref pour pouvoir annuler la requête en cours si une nouvelle est déclenchée
+    const abortControllerRef = useRef(null);
+
     // Charger les données
     const loadData = async (start = pagination.start) => {
+        // Annule la requête précédente si elle est encore en cours,
+        // pour éviter qu'une réponse "obsolète" (ex: recherche "52")
+        // n'écrase le résultat d'une recherche plus récente (ex: "528")
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setLoading(true);
         try {
             const response = await axios.get('/factures/list', {
-                params: { draw: 1, start, length: pagination.length, ...filters }
+                params: { draw: 1, start, length: pagination.length, ...filters },
+                signal: controller.signal
             });
             setFactures(response.data.data.result);
             setMeta(response.data.data.meta);
             setPagination(prev => ({ ...prev, total: response.data.recordsTotal }));
         } catch (error) {
+            if (axios.isCancel(error) || error.name === 'CanceledError') {
+                // Requête annulée volontairement (une plus récente l'a remplacée) : on ignore
+                return;
+            }
             console.error('Erreur chargement factures:', error);
         } finally {
-            setLoading(false);
+            // On ne désactive le loading que si c'est toujours la requête active,
+            // pour éviter un clignotement si une requête plus récente est déjà en cours
+            if (abortControllerRef.current === controller) {
+                setLoading(false);
+            }
         }
     };
 
@@ -45,8 +66,15 @@ export default function FactureIndex({ quartiers, usages }) {
         setPagination(prev => ({ ...prev, start: 0 }));
     }, [filters]);
 
+    // Debounce : on attend 300ms après la dernière frappe avant de lancer la requête,
+    // et on annule le timer précédent à chaque changement pour ne garder que le dernier
     useEffect(() => {
-        loadData(pagination.start);
+        const timeout = setTimeout(() => {
+            loadData(pagination.start);
+        }, 300);
+
+        return () => clearTimeout(timeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, pagination.start]);
 
     // Toggle row expansion
